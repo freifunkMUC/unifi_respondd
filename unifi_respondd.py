@@ -12,12 +12,14 @@ from functools import lru_cache
 UNIFI_RESPONDD_CONFIG_OS_ENV = "UNIFI_RESPONDD_CONFIG_FILE"
 UNIFI_RESPONDD_CONFIG_DEFAULT_LOCATION = "./unifi_respondd.yaml"
 
+
 class Error(Exception):
     """Base Exception handling class."""
 
 
 class ConfigFileNotFoundError(Error):
     """File could not be found on disk."""
+
 
 @dataclasses.dataclass
 class Config:
@@ -49,6 +51,7 @@ class Config:
             username=cfg["username"],
             password=cfg["password"],
         )
+
 
 @lru_cache(maxsize=10)
 def fetch_from_config(key: str) -> Optional[Union[Dict[str, Any], List[str]]]:
@@ -98,6 +101,7 @@ def fetch_config_from_disk() -> str:
             f"Could not locate configuration file in {config_file}"
         ) from e
 
+
 @dataclasses.dataclass
 class Accesspoint:
     name: str
@@ -107,9 +111,11 @@ class Accesspoint:
     latitude: float
     longitude: float
 
+
 @dataclasses.dataclass
 class Accesspoints:
     accesspoints: List[Accesspoint]
+
 
 def get_sites(cfg):
     """This function returns a list of sites."""
@@ -177,7 +183,7 @@ def main():
     aps = Accesspoints(accesspoints=[])
     for site in get_sites(cfg):
         aps_for_site = get_aps(cfg, site["name"])
-        clients = get_clients_for_site(cfg,site["name"])
+        clients = get_clients_for_site(cfg, site["name"])
         for ap in aps_for_site:
             lat, lon = 0, 0
             if ap.get("snmp_location", None) is not None:
@@ -186,14 +192,16 @@ def main():
                 except:
                     pass
 
-            aps.accesspoints.append(Accesspoint(
-                name=ap.get("name", None),
-                mac=ap.get("mac", None),
-                snmp_location=ap.get("snmp_location", None),
-                client_count=get_client_count_for_ap(ap.get("mac", None), clients),
-                latitude=lat,
-                longitude=lon
-                ))
+            aps.accesspoints.append(
+                Accesspoint(
+                    name=ap.get("name", None),
+                    mac=ap.get("mac", None),
+                    snmp_location=ap.get("snmp_location", None),
+                    client_count=get_client_count_for_ap(ap.get("mac", None), clients),
+                    latitude=lat,
+                    longitude=lon,
+                )
+            )
     print(aps)
 
 
