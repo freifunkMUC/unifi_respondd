@@ -9,7 +9,7 @@ import yaml
 import os
 from functools import lru_cache
 
-UNIFI_RESPONDD_CONFIG_OS_ENV = "SNMP_TO_INFLUX_CONFIG_FILE"
+UNIFI_RESPONDD_CONFIG_OS_ENV = "UNIFI_RESPONDD_CONFIG_FILE"
 UNIFI_RESPONDD_CONFIG_DEFAULT_LOCATION = "./unifi_respondd.yaml"
 
 class Error(Exception):
