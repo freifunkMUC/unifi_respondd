@@ -16,6 +16,9 @@ class Accesspoint:
     client_count: int
     latitude: float
     longitude: float
+    model: str
+    firmware: str
+    uptime: int
 
 
 @dataclasses.dataclass
@@ -98,7 +101,6 @@ def get_infos():
                         lat, lon = get_location_by_address(ap["snmp_location"], geolookup)
                     except:
                         pass
-
                 aps.accesspoints.append(
                     Accesspoint(
                         name=ap.get("name", None),
@@ -107,6 +109,9 @@ def get_infos():
                         client_count=get_client_count_for_ap(ap.get("mac", None), clients),
                         latitude=float(lat),
                         longitude=float(lon),
+                        model=ap.get("model", None),
+                        firmware=ap.get("version", None),
+                        uptime=ap.get("uptime", None),
                     )
                 )
     return aps

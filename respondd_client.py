@@ -24,7 +24,9 @@ class LocationInfo:
     latitude: float
     longitude: float
 
-
+@dataclasses.dataclass
+class HardwareInfo:
+    model: str
 @dataclass_json
 @dataclasses.dataclass
 class NodeInfo:
@@ -32,6 +34,7 @@ class NodeInfo:
     hostname: str
     node_id: str
     location: LocationInfo
+    hardware: HardwareInfo
 
 
 class ResponddClient:
@@ -57,10 +60,11 @@ class ResponddClient:
         for ap in aps.accesspoints:
             nodes.append(
                 NodeInfo(
-                    firmware=FirmwareInfo(base="", release=""),
+                    firmware=FirmwareInfo(base=ap.firmware, release=""),
                     hostname=ap.name,
                     node_id=ap.mac.replace(":", ""),
                     location=LocationInfo(latitude=ap.latitude, longitude=ap.longitude),
+                    hardware=HardwareInfo(model=ap.model),
                 )
             )
         return nodes
