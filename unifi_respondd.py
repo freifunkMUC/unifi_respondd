@@ -23,6 +23,8 @@ class Accesspoint:
     contact: str
     load_avg: float
     mem_used: int
+    mem_total: int
+    mem_buffer: int
 
 
 @dataclasses.dataclass
