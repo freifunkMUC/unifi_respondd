@@ -80,7 +80,7 @@ class ResponddClient:
         for ap in aps.accesspoints:
             statistics.append(
                 StatisticsInfo(
-                    clients=ap.clients,
+                    clients=ap.client_count,
                     uptime=ap.uptime,
                     node_id=ap.mac.replace(":", ""),
                 )
@@ -133,7 +133,7 @@ class ResponddClient:
                 end="",
             )
             print(responseStruct)
-        for response in list(responseStruct.keys())[0]:
+        for response in responseStruct[list(responseStruct.keys())[0]]:
             print(response.to_json())
             node = {}
             node[list(responseStruct.keys())[0]] = response.to_dict()
