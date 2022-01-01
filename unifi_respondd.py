@@ -104,8 +104,8 @@ def get_infos():
                     mac=ap.get("mac", None),
                     snmp_location=ap.get("snmp_location", None),
                     client_count=get_client_count_for_ap(ap.get("mac", None), clients),
-                    latitude=lat,
-                    longitude=lon,
+                    latitude=float(lat),
+                    longitude=float(lon),
                 )
             )
     return aps

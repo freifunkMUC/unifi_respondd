@@ -109,8 +109,12 @@ class ResponddClient:
                 end="",
             )
             print(responseStruct)
-        for response in responseStruct:
-            responseData = bytes({"nodeinfo": response.to_json()}, "UTF-8")
+        for response in responseStruct["nodeinfo"]:
+            print(response.to_json())
+            node = {}
+            node['nodeinfo'] = response.to_dict()
+            responseData = bytes(json.dumps(node), "UTF-8")
+            print(responseData)
 
             if withCompression:
                 encoder = zlib.compressobj(
