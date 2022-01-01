@@ -124,9 +124,9 @@ def get_infos():
                         uptime=ap.get("uptime", None),
                         contact=ap.get("snmp_contact", None),
                         load_avg=float(ap.get("sys_stats", {}).get("loadavg_1", 0.0)),
-                        mem_used=ap.get("sys_stats", {}).get("mem_used", None),
-                        mem_buffer=ap.get("sys_stats", {}).get("mem_buffer", None),
-                        mem_total=ap.get("sys_stats", {}).get("mem_total", None),
+                        mem_used=ap.get("sys_stats", {}).get("mem_used", 0),
+                        mem_buffer=ap.get("sys_stats", {}).get("mem_buffer", 0),
+                        mem_total=ap.get("sys_stats", {}).get("mem_total", 0),
                     )
                 )
     return aps
