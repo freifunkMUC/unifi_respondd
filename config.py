@@ -5,6 +5,7 @@ import os
 from typing import List, Dict, Any, Union, Optional
 import dataclasses
 import sys
+
 UNIFI_RESPONDD_CONFIG_OS_ENV = "UNIFI_RESPONDD_CONFIG_FILE"
 UNIFI_RESPONDD_CONFIG_DEFAULT_LOCATION = "./unifi_respondd.yaml"
 
@@ -52,7 +53,7 @@ class Config:
             password=cfg["password"],
             multicast_address=cfg["multicast_address"],
             multicast_port=cfg["multicast_port"],
-            interface=cfg["interface"]
+            interface=cfg["interface"],
         )
 
 

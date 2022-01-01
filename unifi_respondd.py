@@ -108,10 +108,12 @@ def get_infos():
                     longitude=lon,
                 )
             )
-    return(aps)
+    return aps
+
 
 def main():
     print(get_infos())
+
 
 if __name__ == "__main__":
     main()
