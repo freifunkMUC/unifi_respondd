@@ -108,7 +108,7 @@ class ResponddClient:
                 "%14.3f %35s %5d: " % (time.time(), destAddress[0], destAddress[1]),
                 end="",
             )
-            print(json.dumps(responseStruct, sort_keys=True, indent=4))
+            print(responseStruct)
         for response in responseStruct:
             responseData = bytes({"nodeinfo": response.to_json()}, "UTF-8")
 
