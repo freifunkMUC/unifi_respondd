@@ -24,9 +24,12 @@ class LocationInfo:
     latitude: float
     longitude: float
 
+
 @dataclasses.dataclass
 class HardwareInfo:
     model: str
+
+
 @dataclass_json
 @dataclasses.dataclass
 class NodeInfo:
@@ -36,11 +39,20 @@ class NodeInfo:
     location: LocationInfo
     hardware: HardwareInfo
 
+
 @dataclasses.dataclass
 class StatisticsInfo:
-    clients: int
+    clients: ClientInfo
     uptime: int
     node_id: str
+
+
+@dataclasses.dataclass
+class ClientInfo:
+    total: int
+    wifi: int
+
+
 class ResponddClient:
     def __init__(self, config):
         self._config = config
@@ -48,7 +60,6 @@ class ResponddClient:
         self._nodeinfos = self.getNodeInfos()
         self._statistics = self.getStatistics()
         self._sock = socket.socket(socket.AF_INET6, socket.SOCK_DGRAM)
-        
 
     @staticmethod
     def joinMCAST(sock, addr, ifname):
@@ -74,14 +85,14 @@ class ResponddClient:
                 )
             )
         return nodes
-    
+
     def getStatistics(self):
         aps = self._aps
         statistics = []
         for ap in aps.accesspoints:
             statistics.append(
                 StatisticsInfo(
-                    clients=ap.client_count,
+                    clients=ClientInfo(total=ap.client_count, wifi=ap.client_count),
                     uptime=ap.uptime,
                     node_id=ap.mac.replace(":", ""),
                 )
@@ -117,14 +128,19 @@ class ResponddClient:
     def merge_node(self, responseStruct):
         merged = {}
         for key in responseStruct.keys():
-            for info in responseStruct[key]:
-                merged[info["node_id"]] = dict(key, info)
-
+            print(key)
+            if responseStruct[key]:
+                for info in responseStruct[key]:
+                    if info.node_id not in merged:
+                        merged[info.node_id] = {key: info}
+                    else:
+                        merged[info.node_id].update({key: info})
         return merged
+
     def buildStruct(self, responseType):
 
         responseClass = None
-        if responseType == 'statistics':
+        if responseType == "statistics":
             responseClass = self._statistics
         elif responseType == "nodeinfo":
             responseClass = self._nodeinfos
@@ -142,10 +158,12 @@ class ResponddClient:
             )
             print(responseStruct)
         merged = self.merge_node(responseStruct)
-        for key, response in merged.items():
-            print(response.to_json())
+        for infos in merged.values():
             node = {}
-            node[key] = response.to_dict()
+            for key, info in infos.items():
+                print(key)
+                print(info)
+                node.update({key: info.to_dict()})
             responseData = bytes(json.dumps(node), "UTF-8")
             print(responseData)
 
