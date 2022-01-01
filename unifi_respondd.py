@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 
+from json import load
 from unificontrol import UnifiClient
 from typing import List
 from geopy.geocoders import Nominatim
@@ -20,6 +21,8 @@ class Accesspoint:
     firmware: str
     uptime: int
     contact: str
+    load_avg: float
+    mem_used: int
 
 
 @dataclasses.dataclass
@@ -118,6 +121,10 @@ def get_infos():
                         firmware=ap.get("version", None),
                         uptime=ap.get("uptime", None),
                         contact=ap.get("snmp_contact", None),
+                        load_avg=float(ap.get("sys_stats", {}).get("loadavg_1", None)),
+                        mem_used=ap.get("sys_stats", {}).get("mem_used", None),
+                        mem_buffer=ap.get("sys_stats", {}).get("mem_buffer", None),
+                        mem_total=ap.get("sys_stats", {}).get("mem_total", None),
                     )
                 )
     return aps
