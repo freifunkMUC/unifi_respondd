@@ -120,7 +120,7 @@ class ResponddClient:
                     loadavg=ap.load_avg,
                     memory=MemoryInfo(
                         total=ap.mem_total,
-                        free=ap.memory_total - ap.mem_used,
+                        free=ap.mem_total - ap.mem_used,
                         buffers=ap.mem_buffer,
                     ),
                 )
