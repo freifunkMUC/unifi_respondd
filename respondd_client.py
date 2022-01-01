@@ -36,6 +36,7 @@ class NodeInfo:
     location: LocationInfo
     hardware: HardwareInfo
 
+@dataclasses.dataclass
 class StatisticsInfo:
     clients: int
     uptime: int
