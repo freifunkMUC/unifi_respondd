@@ -119,9 +119,9 @@ class ResponddClient:
                     node_id=ap.mac.replace(":", ""),
                     loadavg=ap.load_avg,
                     memory=MemoryInfo(
-                        total=ap.mem_total,
-                        free=ap.mem_total - ap.mem_used,
-                        buffers=ap.mem_buffer,
+                        total=int(ap.mem_total / 1024),
+                        free=int((ap.mem_total - ap.mem_used) / 1024),
+                        buffers=int(ap.mem_buffer / 1024),
                     ),
                 )
             )
