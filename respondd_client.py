@@ -39,6 +39,10 @@ class NodeInfo:
     location: LocationInfo
     hardware: HardwareInfo
 
+@dataclasses.dataclass
+class ClientInfo:
+    total: int
+    wifi: int
 
 @dataclasses.dataclass
 class StatisticsInfo:
@@ -47,10 +51,7 @@ class StatisticsInfo:
     node_id: str
 
 
-@dataclasses.dataclass
-class ClientInfo:
-    total: int
-    wifi: int
+
 
 
 class ResponddClient:
