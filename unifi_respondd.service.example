@@ -1,0 +1,13 @@
+[Unit]
+Description=unifi_respondd
+After=syslog.target network-online.target
+
+[Service]
+Type=simple
+User=root
+Group=root
+WorkingDirectory=/opt/unifi_respondd
+ExecStart=/opt/unifi_respondd/respondd.py
+
+[Install]
+WantedBy=multi-user.target
