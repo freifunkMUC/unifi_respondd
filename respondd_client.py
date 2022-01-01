@@ -43,10 +43,11 @@ class StatisticsInfo:
 class ResponddClient:
     def __init__(self, config):
         self._config = config
+        self._aps = unifi_respondd.get_infos()
         self._nodeinfos = self.getNodeInfos()
         self._statistics = self.getStatistics()
         self._sock = socket.socket(socket.AF_INET6, socket.SOCK_DGRAM)
-        self._aps = unifi_respondd.get_infos()
+        
 
     @staticmethod
     def joinMCAST(sock, addr, ifname):
