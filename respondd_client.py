@@ -36,13 +36,17 @@ class NodeInfo:
     location: LocationInfo
     hardware: HardwareInfo
 
-
+class StatisticsInfo:
+    clients: int
+    uptime: int
+    node_id: str
 class ResponddClient:
     def __init__(self, config):
         self._config = config
         self._nodeinfos = self.getNodeInfos()
-
+        self._statistics = self.getStatistics()
         self._sock = socket.socket(socket.AF_INET6, socket.SOCK_DGRAM)
+        self._aps = unifi_respondd.get_infos()
 
     @staticmethod
     def joinMCAST(sock, addr, ifname):
@@ -55,7 +59,7 @@ class ResponddClient:
         )
 
     def getNodeInfos(self):
-        aps = unifi_respondd.get_infos()
+        aps = self._aps
         nodes = []
         for ap in aps.accesspoints:
             nodes.append(
@@ -68,6 +72,19 @@ class ResponddClient:
                 )
             )
         return nodes
+    
+    def getStatistics(self):
+        aps = self._aps
+        statistics = []
+        for ap in aps.accesspoints:
+            statistics.append(
+                StatisticsInfo(
+                    clients=ap.clients,
+                    uptime=ap.uptime,
+                    node_id=ap.mac.replace(":", ""),
+                )
+            )
+        return statistics
 
     def start(self):
         self._sock.setsockopt(
@@ -98,7 +115,9 @@ class ResponddClient:
     def buildStruct(self, responseType):
 
         responseClass = None
-        if responseType == "nodeinfo":
+        if responseType == 'statistics':
+            responseClass = self._statistics
+        elif responseType == "nodeinfo":
             responseClass = self._nodeinfos
         else:
             print("unknown command: " + responseType)
@@ -113,10 +132,10 @@ class ResponddClient:
                 end="",
             )
             print(responseStruct)
-        for response in responseStruct["nodeinfo"]:
+        for response in list(responseStruct.keys())[0]:
             print(response.to_json())
             node = {}
-            node['nodeinfo'] = response.to_dict()
+            node[list(responseStruct.keys())[0]] = response.to_dict()
             responseData = bytes(json.dumps(node), "UTF-8")
             print(responseData)
 
