@@ -1,105 +1,11 @@
 #!/usr/bin/env python3
 
 from unificontrol import UnifiClient
-from typing import List, Dict, Any, Union, Optional
+from typing import List
 from geopy.geocoders import Nominatim
 import time
 import dataclasses
-import yaml
-import os
-from functools import lru_cache
-
-UNIFI_RESPONDD_CONFIG_OS_ENV = "UNIFI_RESPONDD_CONFIG_FILE"
-UNIFI_RESPONDD_CONFIG_DEFAULT_LOCATION = "./unifi_respondd.yaml"
-
-
-class Error(Exception):
-    """Base Exception handling class."""
-
-
-class ConfigFileNotFoundError(Error):
-    """File could not be found on disk."""
-
-
-@dataclasses.dataclass
-class Config:
-    """A representation of the configuration file.
-    Attributes:
-        controller_url: The unifi controller URL.
-        controller_port: The unifi Controller port.
-        username: The username for unifi controller.
-        password: The password for unifi controller.
-    """
-
-    controller_url: str
-    controller_port: int
-    username: str
-    password: str
-
-    @classmethod
-    def from_dict(cls, cfg: Dict[str, str]) -> "Config":
-        """Creates a Config object from a configuration file.
-        Arguments:
-            cfg: The configuration file as a dict.
-        Returns:
-            A Config object.
-        """
-
-        return cls(
-            controller_url=cfg["controller_url"],
-            controller_port=cfg["controller_port"],
-            username=cfg["username"],
-            password=cfg["password"],
-        )
-
-
-@lru_cache(maxsize=10)
-def fetch_from_config(key: str) -> Optional[Union[Dict[str, Any], List[str]]]:
-    """Fetches a specific key from configuration.
-    Arguments:
-        key: The named key to fetch.
-    Returns:
-        The config value associated with the key
-    """
-    return load_config().get(key)
-
-
-def load_config() -> Dict[str, str]:
-    """Fetches and validates configuration file from disk.
-    Returns:
-        Linted configuration file.
-    """
-    cfg_contents = fetch_config_from_disk()
-    try:
-        config = yaml.safe_load(cfg_contents)
-    except yaml.YAMLError as e:
-        print("Failed to load YAML file: %s", e)
-        sys.exit(1)
-    try:
-        _ = Config.from_dict(config)
-        return config
-    except (KeyError, TypeError) as e:
-        print("Failed to lint file: %s", e)
-        sys.exit(2)
-
-
-def fetch_config_from_disk() -> str:
-    """Fetches config file from disk and returns as string.
-    Raises:
-        ConfigFileNotFoundError: If we could not find the configuration file on disk.
-    Returns:
-        The file contents as string.
-    """
-    config_file = os.environ.get(
-        UNIFI_RESPONDD_CONFIG_OS_ENV, UNIFI_RESPONDD_CONFIG_DEFAULT_LOCATION
-    )
-    try:
-        with open(config_file, "r") as stream:
-            return stream.read()
-    except FileNotFoundError as e:
-        raise ConfigFileNotFoundError(
-            f"Could not locate configuration file in {config_file}"
-        ) from e
+import config
 
 
 @dataclasses.dataclass
@@ -177,8 +83,8 @@ def get_location_by_address(address, app):
         return get_location_by_address(address)
 
 
-def main():
-    cfg = Config.from_dict(load_config())
+def get_infos():
+    cfg = config.Config.from_dict(config.load_config())
     geolookup = Nominatim(user_agent="ffmuc_respondd")
     aps = Accesspoints(accesspoints=[])
     for site in get_sites(cfg):
@@ -202,8 +108,10 @@ def main():
                     longitude=lon,
                 )
             )
-    print(aps)
+    return(aps)
 
+def main():
+    print(get_infos())
 
 if __name__ == "__main__":
     main()
