@@ -31,10 +31,9 @@ def sendMessage(s, responseData, multicast_address):
 def main():
     aps = unifi_respondd.get_infos()
     cfg = config.Config.from_dict(config.load_config())
-    sock = socket.socket(socket.AF_INET6, socket.SOCK_DGRAM)
     for ap in aps.accesspoints:
         print(ap)
-    
+        sock = socket.socket(socket.AF_INET6, socket.SOCK_DGRAM)
         nodeInfo = NodeInfo(
             firmware=FirmwareInfo(base="", release=""),
             hostname=ap.name,
@@ -43,7 +42,7 @@ def main():
         )
         print(nodeInfo.to_json())
         sendMessage(sock, bytes(nodeInfo.to_json(), 'UTF-8'), (cfg.multicast_address, cfg.multicast_port))
-    sock.close()
+        sock.close()
 
 if __name__ == "__main__":
     main()
