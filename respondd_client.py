@@ -109,7 +109,7 @@ class ResponddClient:
             if msgSplit[0] == "GET":  # multi_request
                 for request in msgSplit[1:]:
                     responseStruct[request] = self.buildStruct(request)
-                self.sendStruct(sourceAddress, responseStruct, True)
+                    self.sendStruct(sourceAddress, responseStruct, True)
             else:  # single_request
                 responseStruct = self.buildStruct(msgSplit[0])
                 self.sendStruct(sourceAddress, responseStruct, False)
