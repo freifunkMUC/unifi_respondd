@@ -43,6 +43,11 @@ class ClientInfo:
     total: int
     wifi: int
 
+@dataclasses.dataclass
+class MemoryInfo:
+    total: int
+    free: int
+    buffers: int
 
 @dataclass_json
 @dataclasses.dataclass
@@ -50,6 +55,8 @@ class StatisticsInfo:
     clients: ClientInfo
     uptime: int
     node_id: str
+    loadavg: float
+    memory: MemoryInfo
 
 
 class ResponddClient:
@@ -103,6 +110,14 @@ class ResponddClient:
                     clients=ClientInfo(total=ap.client_count, wifi=ap.client_count),
                     uptime=ap.uptime,
                     node_id=ap.mac.replace(":", ""),
+                    loadavg=ap.load_avg,
+                    memory=MemoryInfo(
+                        total=ap.mem_total,
+                        free=ap.memory_total - ap.mem_used,
+                        buffers=ap.mem_buffer,
+                    ),
+                )
+            )
                 )
             )
         return statistics
