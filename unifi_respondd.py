@@ -20,6 +20,7 @@ class Accesspoint:
     model: str
     firmware: str
     uptime: int
+    contact: str
     load_avg: float
     mem_used: int
 
@@ -119,6 +120,7 @@ def get_infos():
                         model=ap.get("model", None),
                         firmware=ap.get("version", None),
                         uptime=ap.get("uptime", None),
+                        contact=ap.get("snmp_contact", None),
                         load_avg=float(ap.get("sys_stats", {}).get("loadavg_1", None)),
                         mem_used=ap.get("sys_stats", {}).get("mem_used", None),
                         mem_buffer=ap.get("sys_stats", {}).get("mem_buffer", None),

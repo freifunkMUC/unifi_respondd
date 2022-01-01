@@ -27,6 +27,9 @@ class LocationInfo:
 class HardwareInfo:
     model: str
 
+@dataclasses.dataclass
+class OwnerInfo:
+    contact: str
 
 @dataclass_json
 @dataclasses.dataclass
@@ -36,6 +39,7 @@ class NodeInfo:
     node_id: str
     location: LocationInfo
     hardware: HardwareInfo
+    owner: OwnerInfo
 
 
 @dataclasses.dataclass
@@ -99,6 +103,7 @@ class ResponddClient:
                     node_id=ap.mac.replace(":", ""),
                     location=LocationInfo(latitude=ap.latitude, longitude=ap.longitude),
                     hardware=HardwareInfo(model=ap.model),
+                    owner=OwnerInfo(contact=ap.contact),
                 )
             )
         return nodes
