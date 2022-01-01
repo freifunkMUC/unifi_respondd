@@ -109,11 +109,18 @@ class ResponddClient:
             if msgSplit[0] == "GET":  # multi_request
                 for request in msgSplit[1:]:
                     responseStruct[request] = self.buildStruct(request)
-                    self.sendStruct(sourceAddress, responseStruct, True)
+                self.sendStruct(sourceAddress, responseStruct, True)
             else:  # single_request
                 responseStruct = self.buildStruct(msgSplit[0])
                 self.sendStruct(sourceAddress, responseStruct, False)
 
+    def merge_node(self, responseStruct):
+        merged = {}
+        for key in responseStruct.keys():
+            for info in responseStruct[key]:
+                merged[info["node_id"]] = dict(key, info)
+
+        return merged
     def buildStruct(self, responseType):
 
         responseClass = None
@@ -134,10 +141,11 @@ class ResponddClient:
                 end="",
             )
             print(responseStruct)
-        for response in responseStruct[list(responseStruct.keys())[0]]:
+        merged = self.merge_node(responseStruct)
+        for key, response in merged.items():
             print(response.to_json())
             node = {}
-            node[list(responseStruct.keys())[0]] = response.to_dict()
+            node[key] = response.to_dict()
             responseData = bytes(json.dumps(node), "UTF-8")
             print(responseData)
 
