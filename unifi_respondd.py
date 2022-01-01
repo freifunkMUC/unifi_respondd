@@ -91,23 +91,24 @@ def get_infos():
         aps_for_site = get_aps(cfg, site["name"])
         clients = get_clients_for_site(cfg, site["name"])
         for ap in aps_for_site:
-            lat, lon = 0, 0
-            if ap.get("snmp_location", None) is not None:
-                try:
-                    lat, lon = get_location_by_address(ap["snmp_location"], geolookup)
-                except:
-                    pass
+            if ap.get("name", None) is not None:
+                lat, lon = 0, 0
+                if ap.get("snmp_location", None) is not None:
+                    try:
+                        lat, lon = get_location_by_address(ap["snmp_location"], geolookup)
+                    except:
+                        pass
 
-            aps.accesspoints.append(
-                Accesspoint(
-                    name=ap.get("name", None),
-                    mac=ap.get("mac", None),
-                    snmp_location=ap.get("snmp_location", None),
-                    client_count=get_client_count_for_ap(ap.get("mac", None), clients),
-                    latitude=float(lat),
-                    longitude=float(lon),
+                aps.accesspoints.append(
+                    Accesspoint(
+                        name=ap.get("name", None),
+                        mac=ap.get("mac", None),
+                        snmp_location=ap.get("snmp_location", None),
+                        client_count=get_client_count_for_ap(ap.get("mac", None), clients),
+                        latitude=float(lat),
+                        longitude=float(lon),
+                    )
                 )
-            )
     return aps
 
 
