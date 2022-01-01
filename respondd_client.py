@@ -120,5 +120,4 @@ class ResponddClient:
                 responseData += encoder.flush()
                 # return compress(str.encode(json.dumps(ret)))[2:-4] # bug? (mesh-announce strip here)
 
-            if not self._config["dry_run"]:
-                self._sock.sendto(responseData, destAddress)
+            self._sock.sendto(responseData, destAddress)

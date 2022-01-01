@@ -36,6 +36,7 @@ class Config:
     multicast_address: str
     multicast_port: int
     interface: str
+    verbose: bool = False
 
     @classmethod
     def from_dict(cls, cfg: Dict[str, str]) -> "Config":
@@ -54,6 +55,7 @@ class Config:
             multicast_address=cfg["multicast_address"],
             multicast_port=cfg["multicast_port"],
             interface=cfg["interface"],
+            verbose=cfg["verbose"],
         )
 
 
