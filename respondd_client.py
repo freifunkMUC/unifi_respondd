@@ -43,11 +43,13 @@ class ClientInfo:
     total: int
     wifi: int
 
+
 @dataclasses.dataclass
 class MemoryInfo:
     total: int
     free: int
     buffers: int
+
 
 @dataclass_json
 @dataclasses.dataclass
@@ -116,8 +118,6 @@ class ResponddClient:
                         free=ap.memory_total - ap.mem_used,
                         buffers=ap.mem_buffer,
                     ),
-                )
-            )
                 )
             )
         return statistics
