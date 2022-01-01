@@ -19,6 +19,7 @@ class Accesspoint:
     model: str
     firmware: str
     uptime: int
+    contact: str
 
 
 @dataclasses.dataclass
@@ -116,6 +117,7 @@ def get_infos():
                         model=ap.get("model", None),
                         firmware=ap.get("version", None),
                         uptime=ap.get("uptime", None),
+                        contact=ap.get("snmp_contact", None),
                     )
                 )
     return aps
