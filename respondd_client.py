@@ -8,7 +8,7 @@ import time
 
 import dataclasses
 from dataclasses_json import dataclass_json
-import unifi_respondd
+import unifi_client
 
 
 @dataclasses.dataclass
@@ -175,7 +175,7 @@ class ResponddClient:
 
     @property
     def _aps(self):
-        return unifi_respondd.get_infos()
+        return unifi_client.get_infos()
 
     @property
     def _nodeinfos(self):
