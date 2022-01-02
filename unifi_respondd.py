@@ -28,6 +28,8 @@ class Accesspoint:
     mem_used: int
     mem_total: int
     mem_buffer: int
+    tx_bytes: int
+    rx_bytes: int
 
 
 @dataclasses.dataclass
@@ -139,6 +141,8 @@ def get_infos():
                         mem_used=ap.get("sys_stats", {}).get("mem_used", 0),
                         mem_buffer=ap.get("sys_stats", {}).get("mem_buffer", 0),
                         mem_total=ap.get("sys_stats", {}).get("mem_total", 0),
+                        tx_bytes=ap.get("tx_bytes", 0),
+                        rx_bytes=ap.get("rx_bytes", 0),
                     )
                 )
     return aps

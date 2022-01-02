@@ -65,7 +65,19 @@ class MemoryInfo:
     free: int
     buffers: int
 
+@dataclasses.dataclass
+class txInfo:
+    bytes: int
 
+
+@dataclasses.dataclass
+class rxInfo:
+    bytes: int
+
+@dataclasses.dataclass
+class TrafficInfo:
+    tx: txInfo
+    rx: rxInfo
 @dataclass_json
 @dataclasses.dataclass
 class StatisticsInfo:
@@ -74,6 +86,7 @@ class StatisticsInfo:
     node_id: str
     loadavg: float
     memory: MemoryInfo
+    traffic: TrafficInfo
 
 
 class ResponddClient:
@@ -134,6 +147,10 @@ class ResponddClient:
                         total=int(ap.mem_total / 1024),
                         free=int((ap.mem_total - ap.mem_used) / 1024),
                         buffers=int(ap.mem_buffer / 1024),
+                    ),
+                    traffic=TrafficInfo(
+                        tx=txInfo(bytes=int(ap.tx_bytes)),
+                        rx=rxInfo(bytes=int(ap.rx_bytes)),
                     ),
                 )
             )
