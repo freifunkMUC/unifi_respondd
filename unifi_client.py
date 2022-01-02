@@ -92,6 +92,7 @@ def get_aps(cfg, site):
 
 
 def get_clients_for_site(cfg, site):
+    """This function returns a list of clients for a site."""
     client = UnifiClient(
         host=cfg.controller_url,
         port=cfg.controller_port,
@@ -106,6 +107,7 @@ def get_clients_for_site(cfg, site):
 
 
 def get_client_count_for_ap(ap_mac, clients):
+    """This function returns the number total clients, 2,4Ghz clients and 5Ghz clients connected to an AP."""
     client5_count = 0
     client24_count = 0
     for client in clients:
@@ -131,6 +133,7 @@ def get_location_by_address(address, app):
 
 
 def get_infos():
+    """This function gathers all the information and returns a list of Accesspoint objects."""
     cfg = config.Config.from_dict(config.load_config())
     geolookup = Nominatim(user_agent="ffmuc_respondd")
     aps = Accesspoints(accesspoints=[])
@@ -176,6 +179,7 @@ def get_infos():
 
 
 def main():
+    """This function is the main function, it's only executed if we aren't imported."""
     print(get_infos())
 
 

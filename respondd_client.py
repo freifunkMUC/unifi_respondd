@@ -169,6 +169,8 @@ class StatisticsInfo:
 
 
 class ResponddClient:
+    """This class receives a request from the respondd server and returns the response."""
+
     def __init__(self, config):
         self._config = config
         self._sock = socket.socket(socket.AF_INET6, socket.SOCK_DGRAM)
@@ -187,6 +189,7 @@ class ResponddClient:
 
     @staticmethod
     def joinMCAST(sock, addr, ifname):
+        """Joins a multicast group on a socket."""
         group = socket.inet_pton(socket.AF_INET6, addr)
         if_idx = socket.if_nametoindex(ifname)
         sock.setsockopt(
@@ -196,6 +199,7 @@ class ResponddClient:
         )
 
     def getNodeInfos(self):
+        """This method returns the node information of all APs."""
         aps = self._aps
         nodes = []
         for ap in aps.accesspoints:
@@ -215,6 +219,7 @@ class ResponddClient:
         return nodes
 
     def getStatistics(self):
+        """This method returns the statistics information of all APs."""
         aps = self._aps
         statistics = []
         for ap in aps.accesspoints:
@@ -243,6 +248,7 @@ class ResponddClient:
         return statistics
 
     def start(self):
+        """This method starts the respondd client."""
         self._sock.setsockopt(
             socket.SOL_SOCKET,
             socket.SO_BINDTODEVICE,
@@ -269,6 +275,7 @@ class ResponddClient:
                 self.sendStruct(sourceAddress, responseStruct, False)
 
     def merge_node(self, responseStruct):
+        """This method merges the node information of all APs to their corresponding node_id."""
         merged = {}
         for key in responseStruct.keys():
             print(key)
@@ -281,6 +288,7 @@ class ResponddClient:
         return merged
 
     def buildStruct(self, responseType):
+        """This method builds the response structure."""
 
         responseClass = None
         if responseType == "statistics":
@@ -294,6 +302,7 @@ class ResponddClient:
         return responseClass
 
     def sendStruct(self, destAddress, responseStruct, withCompression):
+        """This method sends the response structure to the respondd server."""
         if self._config.verbose:
             print(
                 "%14.3f %35s %5d: " % (time.time(), destAddress[0], destAddress[1]),
@@ -311,9 +320,8 @@ class ResponddClient:
             if withCompression:
                 encoder = zlib.compressobj(
                     zlib.Z_DEFAULT_COMPRESSION, zlib.DEFLATED, -15
-                )  # The data may be decompressed using zlib and many zlib bindings using -15 as the window size parameter.
+                )
                 responseData = encoder.compress(responseData)
                 responseData += encoder.flush()
-                # return compress(str.encode(json.dumps(ret)))[2:-4] # bug? (mesh-announce strip here)
 
             self._sock.sendto(responseData, destAddress)
