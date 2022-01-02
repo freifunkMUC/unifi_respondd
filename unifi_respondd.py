@@ -116,8 +116,6 @@ def get_infos():
                         )
                     except:
                         pass
-
-
                 aps.accesspoints.append(
                     Accesspoint(
                         name=ap.get("name", None),
