@@ -15,6 +15,8 @@ class Accesspoint:
     mac: str
     snmp_location: str
     client_count: int
+    client_count24: int
+    client_count5: int
     latitude: float
     longitude: float
     model: str
@@ -76,11 +78,15 @@ def get_clients_for_site(cfg, site):
 
 
 def get_client_count_for_ap(ap_mac, clients):
-    client_count = 0
+    client5_count = 0
+    client24_count = 0
     for client in clients:
         if client.get("ap_mac", "No mac") == ap_mac:
-            client_count += 1
-    return client_count
+            if client.get("channel", 0) > 14:
+                client5_count += 1
+            else :
+                client24_count += 1
+    return client24_count + client5_count, client24_count, client5_count 
 
 
 def get_location_by_address(address, app):
@@ -101,6 +107,7 @@ def get_infos():
         clients = get_clients_for_site(cfg, site["name"])
         for ap in aps_for_site:
             if ap.get("name", None) is not None:
+                client_count, client_countghz24, client_countghz5 = get_client_count_for_ap(ap.get("mac", None), clients)
                 lat, lon = 0, 0
                 if ap.get("snmp_location", None) is not None:
                     try:
@@ -109,14 +116,16 @@ def get_infos():
                         )
                     except:
                         pass
+
+
                 aps.accesspoints.append(
                     Accesspoint(
                         name=ap.get("name", None),
                         mac=ap.get("mac", None),
                         snmp_location=ap.get("snmp_location", None),
-                        client_count=get_client_count_for_ap(
-                            ap.get("mac", None), clients
-                        ),
+                        client_count=client_count,
+                        client_countghz24=client_countghz24,
+                        client_countghz5=client_countghz5,
                         latitude=float(lat),
                         longitude=float(lon),
                         model=ap.get("model", None),
