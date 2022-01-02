@@ -107,7 +107,7 @@ def get_infos():
         clients = get_clients_for_site(cfg, site["name"])
         for ap in aps_for_site:
             if ap.get("name", None) is not None:
-                client_count, client_countghz24, client_countghz5 = get_client_count_for_ap(ap.get("mac", None), clients)
+                client_count, client_count24, client_count5 = get_client_count_for_ap(ap.get("mac", None), clients)
                 lat, lon = 0, 0
                 if ap.get("snmp_location", None) is not None:
                     try:
@@ -122,8 +122,8 @@ def get_infos():
                         mac=ap.get("mac", None),
                         snmp_location=ap.get("snmp_location", None),
                         client_count=client_count,
-                        client_countghz24=client_countghz24,
-                        client_countghz5=client_countghz5,
+                        client_count24=client_count24,
+                        client_count5=client_count5,
                         latitude=float(lat),
                         longitude=float(lon),
                         model=ap.get("model", None),
