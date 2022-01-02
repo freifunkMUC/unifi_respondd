@@ -13,39 +13,75 @@ import unifi_respondd
 
 @dataclasses.dataclass
 class FirmwareInfo:
+    """This class contains the firmware information of an AP.
+    Attributes:
+        base: The base version of the firmware.
+        release: The release version of the firmware."""
+
     base: str
     release: str
 
 
 @dataclasses.dataclass
 class LocationInfo:
+    """This class contains the location information of an AP.
+    Attributes:
+        latitude: The latitude of the AP.
+        longitude: The longitude of the AP."""
+
     latitude: float
     longitude: float
 
 
 @dataclasses.dataclass
 class HardwareInfo:
+    """This class contains the hardware information of an AP.
+    Attributes:
+        model: The hardware model of the AP."""
+
     model: str
 
 
 @dataclasses.dataclass
 class OwnerInfo:
+    """This class contains the owner information of an AP.
+    Attributes:
+        contact: The contact of the AP for example an email address."""
+
     contact: str
 
 
 @dataclasses.dataclass
 class SoftwareInfo:
+    """This class contains the software information of an AP.
+    Attributes:
+        firmware: The firmware information of the AP."""
+
     firmware: FirmwareInfo
 
 
 @dataclasses.dataclass
 class NetworkInfo:
+    """This class contains the network information of an AP.
+    Attributes:
+        mac: The MAC address of the AP."""
+
     mac: str
 
 
 @dataclass_json
 @dataclasses.dataclass
 class NodeInfo:
+    """This class contains the node information of an AP.
+    Attributes:
+        software: The software information of the AP.
+        hostname: The hostname of the AP.
+        node_id: The node id of the AP. This is the same as the MAC address (without :).
+        location: The location information of the AP.
+        hardware: The hardware information of the AP.
+        owner: The owner information of the AP.
+        network: The network information of the AP."""
+
     software: SoftwareInfo
     hostname: str
     node_id: str
@@ -57,6 +93,13 @@ class NodeInfo:
 
 @dataclasses.dataclass
 class ClientInfo:
+    """This class contains the client information of an AP.
+    Attributes:
+        total: The total number of clients.
+        wifi: The number of clients connected via WiFi.
+        wifi24: The number of clients connected via 2,4ghz WiFi.
+        wifi5: The number of clients connected via 5ghz WiFi."""
+
     total: int
     wifi: int
     wifi24: int
@@ -65,6 +108,12 @@ class ClientInfo:
 
 @dataclasses.dataclass
 class MemoryInfo:
+    """This class contains the memory information of an AP.
+    Attributes:
+        total: The total memory of the AP.
+        free: The free memory of the AP.
+        buffers: The buffer memory of the AP."""
+
     total: int
     free: int
     buffers: int
@@ -72,16 +121,29 @@ class MemoryInfo:
 
 @dataclasses.dataclass
 class txInfo:
+    """This class contains the tx information of an AP.
+    Attributes:
+        bytes: The number of bytes transmitted."""
+
     bytes: int
 
 
 @dataclasses.dataclass
 class rxInfo:
+    """This class contains the rx information of an AP.
+    Attributes:
+        bytes: The number of bytes received."""
+
     bytes: int
 
 
 @dataclasses.dataclass
 class TrafficInfo:
+    """This class contains the traffic information of an AP.
+    Attributes:
+        tx: The tx information of the AP.
+        rx: The rx information of the AP."""
+
     tx: txInfo
     rx: rxInfo
 
@@ -89,6 +151,15 @@ class TrafficInfo:
 @dataclass_json
 @dataclasses.dataclass
 class StatisticsInfo:
+    """This class contains the statistics information of an AP.
+    Attributes:
+        clients: The client information of the AP.
+        uptime: The uptime of the AP.
+        node_id: The node id of the AP. This is the same as the MAC address (without :).
+        loadavg: The load average of the AP.
+        memory: The memory information of the AP.
+        traffic: The traffic information of the AP."""
+
     clients: ClientInfo
     uptime: int
     node_id: str
