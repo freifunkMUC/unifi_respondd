@@ -12,6 +12,27 @@ import config
 
 @dataclasses.dataclass
 class Accesspoint:
+    """This class contains the information of an AP.
+    Attributes:
+        name: The name of the AP (alias in the unifi controller).
+        mac: The MAC address of the AP.
+        snmp_location: The location of the AP (SNMP location in the unifi controller).
+        client_count: The number of clients connected to the AP.
+        client_count24: The number of clients connected to the AP via 2,4 GHz.
+        client_count5: The number of clients connected to the AP via 5 GHz.
+        latitude: The latitude of the AP.
+        longitude: The longitude of the AP.
+        model: The hardware model of the AP.
+        firmware: The firmware information of the AP.
+        uptime: The uptime of the AP.
+        contact: The contact of the AP for example an email address.
+        load_avg: The load average of the AP.
+        mem_used: The used memory of the AP.
+        mem_total: The total memory of the AP.
+        mem_buffer: The buffer memory of the AP.
+        tx_bytes: The transmitted bytes of the AP.
+        rx_bytes: The received bytes of the AP."""
+
     name: str
     mac: str
     snmp_location: str
@@ -34,6 +55,10 @@ class Accesspoint:
 
 @dataclasses.dataclass
 class Accesspoints:
+    """This class contains the information of all APs.
+    Attributes:
+        accesspoints: A list of Accesspoint objects."""
+
     accesspoints: List[Accesspoint]
 
 
