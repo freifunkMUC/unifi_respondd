@@ -48,6 +48,7 @@ class NodeInfo:
     location: LocationInfo
     hardware: HardwareInfo
     owner: OwnerInfo
+    network: NetworkInfo
 
 
 @dataclasses.dataclass
