@@ -4,8 +4,7 @@ After=syslog.target network-online.target
 
 [Service]
 Type=simple
-User=nobody
-Group=nogroup
+DynamicUser=yes
 WorkingDirectory=/opt/unifi_respondd
 ExecStart=/opt/unifi_respondd/respondd.py
 
