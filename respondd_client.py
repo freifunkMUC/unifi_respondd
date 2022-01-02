@@ -35,6 +35,10 @@ class OwnerInfo:
 class SoftwareInfo:
     firmware: FirmwareInfo
 
+@dataclasses.dataclass
+class NetworkInfo:
+    mac: str
+
 @dataclass_json
 @dataclasses.dataclass
 class NodeInfo:
@@ -110,6 +114,7 @@ class ResponddClient:
                     location=LocationInfo(latitude=ap.latitude, longitude=ap.longitude),
                     hardware=HardwareInfo(model=ap.model),
                     owner=OwnerInfo(contact=ap.contact),
+                    network=NetworkInfo(mac=ap.mac),
                 )
             )
         return nodes
