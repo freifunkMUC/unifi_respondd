@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 from json import load
+from geopy.point import Point
 from unificontrol import UnifiClient
 from typing import List
 from geopy.geocoders import Nominatim
@@ -93,9 +94,13 @@ def get_location_by_address(address, app):
     """This function returns latitude and longitude of a given address."""
     time.sleep(1)
     try:
-        return app.geocode(address).raw["lat"], app.geocode(address).raw["lon"]
-    except:
-        return get_location_by_address(address)
+        point = Point().from_string(address)
+        return point.latitude, point.longitude
+    except:        
+        try:
+            return app.geocode(address).raw["lat"], app.geocode(address).raw["lon"]
+        except:
+            return get_location_by_address(address)
 
 
 def get_infos():
