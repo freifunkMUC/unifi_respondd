@@ -31,10 +31,14 @@ class HardwareInfo:
 class OwnerInfo:
     contact: str
 
+@dataclasses.dataclass
+class SoftwareInfo:
+    firmware: FirmwareInfo
+
 @dataclass_json
 @dataclasses.dataclass
 class NodeInfo:
-    firmware: FirmwareInfo
+    software: SoftwareInfo
     hostname: str
     node_id: str
     location: LocationInfo
@@ -98,7 +102,7 @@ class ResponddClient:
         for ap in aps.accesspoints:
             nodes.append(
                 NodeInfo(
-                    firmware=FirmwareInfo(base=ap.firmware, release=""),
+                    software=SoftwareInfo(firmware=FirmwareInfo(base=ap.firmware, release="")),
                     hostname=ap.name,
                     node_id=ap.mac.replace(":", ""),
                     location=LocationInfo(latitude=ap.latitude, longitude=ap.longitude),
