@@ -27,17 +27,21 @@ class LocationInfo:
 class HardwareInfo:
     model: str
 
+
 @dataclasses.dataclass
 class OwnerInfo:
     contact: str
+
 
 @dataclasses.dataclass
 class SoftwareInfo:
     firmware: FirmwareInfo
 
+
 @dataclasses.dataclass
 class NetworkInfo:
     mac: str
+
 
 @dataclass_json
 @dataclasses.dataclass
@@ -65,6 +69,7 @@ class MemoryInfo:
     free: int
     buffers: int
 
+
 @dataclasses.dataclass
 class txInfo:
     bytes: int
@@ -74,10 +79,13 @@ class txInfo:
 class rxInfo:
     bytes: int
 
+
 @dataclasses.dataclass
 class TrafficInfo:
     tx: txInfo
     rx: rxInfo
+
+
 @dataclass_json
 @dataclasses.dataclass
 class StatisticsInfo:
@@ -122,7 +130,9 @@ class ResponddClient:
         for ap in aps.accesspoints:
             nodes.append(
                 NodeInfo(
-                    software=SoftwareInfo(firmware=FirmwareInfo(base=ap.firmware, release="")),
+                    software=SoftwareInfo(
+                        firmware=FirmwareInfo(base=ap.firmware, release="")
+                    ),
                     hostname=ap.name,
                     node_id=ap.mac.replace(":", ""),
                     location=LocationInfo(latitude=ap.latitude, longitude=ap.longitude),
@@ -139,7 +149,12 @@ class ResponddClient:
         for ap in aps.accesspoints:
             statistics.append(
                 StatisticsInfo(
-                    clients=ClientInfo(total=ap.client_count, wifi=ap.client_count, wifi24=ap.client_count24, wifi5=ap.client_count5),
+                    clients=ClientInfo(
+                        total=ap.client_count,
+                        wifi=ap.client_count,
+                        wifi24=ap.client_count24,
+                        wifi5=ap.client_count5,
+                    ),
                     uptime=ap.uptime,
                     node_id=ap.mac.replace(":", ""),
                     loadavg=ap.load_avg,

@@ -87,9 +87,9 @@ def get_client_count_for_ap(ap_mac, clients):
         if client.get("ap_mac", "No mac") == ap_mac:
             if client.get("channel", 0) > 14:
                 client5_count += 1
-            else :
+            else:
                 client24_count += 1
-    return client24_count + client5_count, client24_count, client5_count 
+    return client24_count + client5_count, client24_count, client5_count
 
 
 def get_location_by_address(address, app):
@@ -98,7 +98,7 @@ def get_location_by_address(address, app):
     try:
         point = Point().from_string(address)
         return point.latitude, point.longitude
-    except:        
+    except:
         try:
             return app.geocode(address).raw["lat"], app.geocode(address).raw["lon"]
         except:
@@ -114,7 +114,9 @@ def get_infos():
         clients = get_clients_for_site(cfg, site["name"])
         for ap in aps_for_site:
             if ap.get("name", None) is not None and ap.get("state", 0) != 0:
-                client_count, client_count24, client_count5 = get_client_count_for_ap(ap.get("mac", None), clients)
+                client_count, client_count24, client_count5 = get_client_count_for_ap(
+                    ap.get("mac", None), clients
+                )
                 lat, lon = 0, 0
                 if ap.get("snmp_location", None) is not None:
                     try:
