@@ -46,6 +46,8 @@ class NodeInfo:
 class ClientInfo:
     total: int
     wifi: int
+    wifi24: int
+    wifi5: int
 
 
 @dataclasses.dataclass
@@ -114,7 +116,7 @@ class ResponddClient:
         for ap in aps.accesspoints:
             statistics.append(
                 StatisticsInfo(
-                    clients=ClientInfo(total=ap.client_count, wifi=ap.client_count),
+                    clients=ClientInfo(total=ap.client_count, wifi=ap.client_count, wifi24=ap.client_count24, wifi5=ap.client_count5),
                     uptime=ap.uptime,
                     node_id=ap.mac.replace(":", ""),
                     loadavg=ap.load_avg,
