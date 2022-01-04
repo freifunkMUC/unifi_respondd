@@ -254,25 +254,44 @@ class ResponddClient:
             socket.SO_BINDTODEVICE,
             bytes(self._config.interface.encode()),
         )
-        self._sock.bind(("::", self._config.multicast_port))
+        if self._config.multicast_enabled:
+            self._sock.bind(("::", self._config.multicast_port))
 
-        self.joinMCAST(
-            self._sock, self._config.multicast_address, self._config.interface
-        )
+            self.joinMCAST(
+                self._sock, self._config.multicast_address, self._config.interface
+            )
 
         while True:
-            msg, sourceAddress = self._sock.recvfrom(2048)
-
-            msgSplit = str(msg, "UTF-8").split(" ")
-
             responseStruct = {}
-            if msgSplit[0] == "GET":  # multi_request
+
+            if self._config.multicast_enabled:
+                msg, sourceAddress = self._sock.recvfrom(2048)
+
+                msgSplit = str(msg, "UTF-8").split(" ")
+
+                if msgSplit[0] == "GET":  # multi_request
+                    for request in msgSplit[1:]:
+                        responseStruct[request] = self.buildStruct(request)
+                    self.sendStruct(sourceAddress, responseStruct, True)
+                else:  # single_request
+                    responseStruct = self.buildStruct(msgSplit[0])
+                    self.sendStruct(sourceAddress, responseStruct, False)
+            else:
+                timeStart = time.time()
+                msgSplit = ['GET', 'nodeinfo', 'statistics']
+
                 for request in msgSplit[1:]:
                     responseStruct[request] = self.buildStruct(request)
-                self.sendStruct(sourceAddress, responseStruct, True)
-            else:  # single_request
-                responseStruct = self.buildStruct(msgSplit[0])
-                self.sendStruct(sourceAddress, responseStruct, False)
+                self.sendStruct((self._config.unicast_address, self._config.unicast_port), responseStruct, True)
+                
+                if self._config.verbose:
+                    print ("data was send")
+
+                timeStop = time.time()
+                timeSleep = int (60 - (timeStop-timeStart) % 60)
+                if self._config.verbose:
+                    print("will now sleep " + str(timeSleep) + " seconds")
+                time.sleep(timeSleep)
 
     def merge_node(self, responseStruct):
         """This method merges the node information of all APs to their corresponding node_id."""
