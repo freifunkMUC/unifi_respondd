@@ -122,7 +122,7 @@ def get_infos():
             if (
                 ap.get("name", None) is not None
                 and ap.get("state", 0) != 0
-                and ap.get("radio_table", None) is not None
+                and ap.get("type", "na") == "uap"
             ):
                 ssids = ap.get("vap_table", None)
                 containsSSID = False
