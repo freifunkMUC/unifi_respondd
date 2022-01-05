@@ -326,10 +326,9 @@ class ResponddClient:
     def sendStruct(self, destAddress, responseStruct, withCompression):
         """This method sends the response structure to the respondd server."""
         logger.debug(
-            "%14.3f %35s %5d: " % (time.time(), destAddress[0], destAddress[1]),
-            end="",
+            destAddress[0] + " " + destAddress[1] + " " + str(responseStruct)
         )
-        logger.debug(responseStruct)
+
         merged = self.merge_node(responseStruct)
         for infos in merged.values():
             node = {}
