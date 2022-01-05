@@ -44,14 +44,15 @@ digraph G {
   }
 
   yanic [shape=Mdiamond];
-
+  respondd [shape=Mdiamond]
+  
   unifi_client -> unifi_controller [label="RESTFul API"];
   respondd_client -> multicast [label="publish"];
   respondd_client -> multicast [label="Subscribe"];
   respondd_client -> unicast [label="Send per interval"];
   unicast -> yanic [label="Receive"]
   multicast -> yanic [label="Request metrics"]
-  {respondd [shape=Mdiamond];}
+  
   {rank=same unifi_controller multicast unicast}
   {rank=same unifi_client respondd_client}
 }
