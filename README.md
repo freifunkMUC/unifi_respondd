@@ -4,7 +4,7 @@ This queries the API of a UniFi controller to get the current status of the Acce
 
 ## Overview
 
-![](Docs/architecture.png)
+![](docs/architecture.png)
 
 
 ## Config File:
