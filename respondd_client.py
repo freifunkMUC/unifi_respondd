@@ -9,7 +9,7 @@ import time
 import dataclasses
 from dataclasses_json import dataclass_json
 import unifi_client
-
+import logger
 
 @dataclasses.dataclass
 class FirmwareInfo:
@@ -247,6 +247,24 @@ class ResponddClient:
             )
         return statistics
 
+    def listenMulticast(self):
+        msg, sourceAddress = self._sock.recvfrom(2048)
+        logger.info("Using multicast method")
+        msgSplit = str(msg, "UTF-8").split(" ")
+
+        return msgSplit, sourceAddress
+
+    def sendUnicast(self):
+        timeStart = time.time()
+
+        logger.info("Using unicast method")
+
+        timeStop = time.time()
+        timeSleep = int(60 - (timeStop - timeStart) % 60)
+        if self._config.verbose:
+            logger.debug("will now sleep " + str(timeSleep) + " seconds")
+        time.sleep(timeSleep)
+
     def start(self):
         """This method starts the respondd client."""
         self._sock.setsockopt(
@@ -254,18 +272,22 @@ class ResponddClient:
             socket.SO_BINDTODEVICE,
             bytes(self._config.interface.encode()),
         )
-        self._sock.bind(("::", self._config.multicast_port))
+        if self._config.multicast_enabled:
+            self._sock.bind(("::", self._config.multicast_port))
 
-        self.joinMCAST(
-            self._sock, self._config.multicast_address, self._config.interface
-        )
+            self.joinMCAST(
+                self._sock, self._config.multicast_address, self._config.interface
+            )
 
         while True:
-            msg, sourceAddress = self._sock.recvfrom(2048)
-
-            msgSplit = str(msg, "UTF-8").split(" ")
-
             responseStruct = {}
+            sourceAddress = (self._config.unicast_address, self._config.unicast_port)
+            msgSplit = ["GET", "nodeinfo", "statistics"]
+
+            if self._config.multicast_enabled:
+                msgSplit, sourceAddress = self.listenMulticast()
+            else:
+                self.sendUnicast()
             if msgSplit[0] == "GET":  # multi_request
                 for request in msgSplit[1:]:
                     responseStruct[request] = self.buildStruct(request)
@@ -278,7 +300,6 @@ class ResponddClient:
         """This method merges the node information of all APs to their corresponding node_id."""
         merged = {}
         for key in responseStruct.keys():
-            print(key)
             if responseStruct[key]:
                 for info in responseStruct[key]:
                     if info.node_id not in merged:
@@ -296,26 +317,25 @@ class ResponddClient:
         elif responseType == "nodeinfo":
             responseClass = self._nodeinfos
         else:
-            print("unknown command: " + responseType)
+            logger.warning("unknown command: " + responseType)
             return
 
         return responseClass
 
     def sendStruct(self, destAddress, responseStruct, withCompression):
         """This method sends the response structure to the respondd server."""
-        if self._config.verbose:
-            print(
-                "%14.3f %35s %5d: " % (time.time(), destAddress[0], destAddress[1]),
-                end="",
-            )
-            print(responseStruct)
+        logger.debug(
+            "%14.3f %35s %5d: " % (time.time(), destAddress[0], destAddress[1]),
+            end="",
+        )
+        logger.debug(responseStruct)
         merged = self.merge_node(responseStruct)
         for infos in merged.values():
             node = {}
             for key, info in infos.items():
                 node.update({key: info.to_dict()})
             responseData = bytes(json.dumps(node), "UTF-8")
-            print(responseData)
+            logger.info(responseData)
 
             if withCompression:
                 encoder = zlib.compressobj(
