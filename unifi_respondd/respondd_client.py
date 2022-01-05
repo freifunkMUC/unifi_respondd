@@ -8,8 +8,9 @@ import time
 
 import dataclasses
 from dataclasses_json import dataclass_json
-import unifi_client
-import logger
+from unifi_respondd import unifi_client
+from unifi_respondd import logger
+
 
 @dataclasses.dataclass
 class FirmwareInfo:
@@ -325,17 +326,16 @@ class ResponddClient:
     def sendStruct(self, destAddress, responseStruct, withCompression):
         """This method sends the response structure to the respondd server."""
         logger.debug(
-            "%14.3f %35s %5d: " % (time.time(), destAddress[0], destAddress[1]),
-            end="",
+            str(destAddress[0]) + " " + str(destAddress[1]) + " " + str(responseStruct)
         )
-        logger.debug(responseStruct)
+
         merged = self.merge_node(responseStruct)
         for infos in merged.values():
             node = {}
             for key, info in infos.items():
                 node.update({key: info.to_dict()})
             responseData = bytes(json.dumps(node), "UTF-8")
-            logger.info(responseData)
+            logger.info(str(responseData))
 
             if withCompression:
                 encoder = zlib.compressobj(

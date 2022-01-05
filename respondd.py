@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
-import config
-from respondd_client import ResponddClient
+import unifi_respondd.config as config
+from unifi_respondd.respondd_client import ResponddClient
 
 
 def main():
