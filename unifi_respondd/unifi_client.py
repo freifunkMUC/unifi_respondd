@@ -10,6 +10,7 @@ import time
 import dataclasses
 import re
 
+
 @dataclasses.dataclass
 class Accesspoint:
     """This class contains the information of an AP.
@@ -61,6 +62,7 @@ class Accesspoints:
 
     accesspoints: List[Accesspoint]
 
+
 def get_client_count_for_ap(ap_mac, clients, cfg):
     """This function returns the number total clients, 2,4Ghz clients and 5Ghz clients connected to an AP."""
     client5_count = 0
@@ -87,18 +89,38 @@ def get_location_by_address(address, app):
         except:
             return get_location_by_address(address)
 
+
 def get_infos():
     """This function gathers all the information and returns a list of Accesspoint objects."""
     cfg = config.Config.from_dict(config.load_config())
-    c = Controller(host=cfg.controller_url, username=cfg.username, password=cfg.password, port=cfg.controller_port, version=cfg.version, ssl_verify=cfg.ssl_verify)
+    c = Controller(
+        host=cfg.controller_url,
+        username=cfg.username,
+        password=cfg.password,
+        port=cfg.controller_port,
+        version=cfg.version,
+        ssl_verify=cfg.ssl_verify,
+    )
     geolookup = Nominatim(user_agent="ffmuc_respondd")
     aps = Accesspoints(accesspoints=[])
     for site in c.get_sites():
-        c = Controller(host=cfg.controller_url, username=cfg.username, password=cfg.password, port=cfg.controller_port, version=cfg.version, site_id=site["name"], ssl_verify=False)
+        c = Controller(
+            host=cfg.controller_url,
+            username=cfg.username,
+            password=cfg.password,
+            port=cfg.controller_port,
+            version=cfg.version,
+            site_id=site["name"],
+            ssl_verify=False,
+        )
         aps_for_site = c.get_aps()
         clients = c.get_clients()
         for ap in aps_for_site:
-            if ap.get("name", None) is not None and ap.get("state", 0) != 0 and ap.get("radio_table", None) is not None:
+            if (
+                ap.get("name", None) is not None
+                and ap.get("state", 0) != 0
+                and ap.get("radio_table", None) is not None
+            ):
                 ssids = ap.get("vap_table", None)
                 containsSSID = False
                 if ssids is not None:
@@ -106,9 +128,11 @@ def get_infos():
                         if re.search(cfg.ssid_regex, ssid.get("essid", "")):
                             containsSSID = True
                 if containsSSID:
-                    client_count, client_count24, client_count5 = get_client_count_for_ap(
-                        ap.get("mac", None), clients, cfg
-                    )
+                    (
+                        client_count,
+                        client_count24,
+                        client_count5,
+                    ) = get_client_count_for_ap(ap.get("mac", None), clients, cfg)
                     lat, lon = 0, 0
                     if ap.get("snmp_location", None) is not None:
                         try:
@@ -131,7 +155,9 @@ def get_infos():
                             firmware=ap.get("version", None),
                             uptime=ap.get("uptime", None),
                             contact=ap.get("snmp_contact", None),
-                            load_avg=float(ap.get("sys_stats", {}).get("loadavg_1", 0.0)),
+                            load_avg=float(
+                                ap.get("sys_stats", {}).get("loadavg_1", 0.0)
+                            ),
                             mem_used=ap.get("sys_stats", {}).get("mem_used", 0),
                             mem_buffer=ap.get("sys_stats", {}).get("mem_buffer", 0),
                             mem_total=ap.get("sys_stats", {}).get("mem_total", 0),
