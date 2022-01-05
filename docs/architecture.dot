@@ -39,7 +39,7 @@ digraph G {
   
   unifi_client -> unifi_controller [label="RESTFul API"];
   respondd_client -> multicast [label="Subscribe"];
-  respondd_client -> unicast [label="Send per interval"];
+  respondd_client -> unicast [label="Send per interval / On multicast request"];
   unicast -> yanic [label="Receive"]
   yanic -> multicast [label="Request metrics"]
   respondd -> respondd_client
