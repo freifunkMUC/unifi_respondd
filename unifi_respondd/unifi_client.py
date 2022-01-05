@@ -111,7 +111,7 @@ def get_infos():
             port=cfg.controller_port,
             version=cfg.version,
             site_id=site["name"],
-            ssl_verify=False,
+            ssl_verify=cfg.ssl_verify,
         )
         aps_for_site = c.get_aps()
         clients = c.get_clients()
