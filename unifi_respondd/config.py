@@ -32,7 +32,7 @@ class Config:
     controller_port: int
     username: str
     password: str
-    ssid_regex = str
+    ssid_regex: str
 
     multicast_address: str
     multicast_port: int
