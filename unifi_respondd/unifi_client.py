@@ -111,7 +111,7 @@ def get_infos():
                 password=cfg.password,
                 port=cfg.controller_port,
                 version=cfg.version,
-                site_id=,
+                site_id=site["name"],
                 ssl_verify=cfg.ssl_verify,
             )
         else:
