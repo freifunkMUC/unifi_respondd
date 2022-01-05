@@ -62,11 +62,13 @@ class Accesspoints:
 
     accesspoints: List[Accesspoint]
 
-def get_client_count_for_ap(ap_mac, clients):
+def get_client_count_for_ap(ap_mac, clients, cfg):
     """This function returns the number total clients, 2,4Ghz clients and 5Ghz clients connected to an AP."""
     client5_count = 0
     client24_count = 0
     for client in clients:
+        if re.search(cfg.ssid_regex, client.get("essid", None)):
+            continue
         if client.get("ap_mac", "No mac") == ap_mac:
             if client.get("channel", 0) > 14:
                 client5_count += 1
@@ -108,7 +110,7 @@ def get_infos():
                             containsSSID = True
                 if containsSSID:
                     client_count, client_count24, client_count5 = get_client_count_for_ap(
-                        ap.get("mac", None), clients
+                        ap.get("mac", None), clients, cfg
                     )
                     lat, lon = 0, 0
                     if ap.get("snmp_location", None) is not None:
