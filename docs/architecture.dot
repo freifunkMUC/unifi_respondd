@@ -16,16 +16,7 @@ digraph G {
     fontsize = 20;
   }
 
-  subgraph yanic {
-    style=filled;
-    color=lightgrey;
-    style="dotted"
-    node [style=filled,color="#d8b365"];
-    yanic [label="*yanic*"];
-    fontsize = 20;
-  }
-
- subgraph respondd {
+  subgraph respondd {
     node [style=filled,color="#f5f5f5"];
     style="dotted"
     respondd [label="*respondd_main*"];
@@ -52,7 +43,8 @@ digraph G {
   respondd_client -> unicast [label="Send per interval"];
   unicast -> yanic [label="Receive"]
   multicast -> yanic [label="Request metrics"]
-  
+  respondd -> respondd_client
+  respondd -> unifi_client
   {rank=same unifi_controller multicast unicast}
   {rank=same unifi_client respondd_client}
 }
