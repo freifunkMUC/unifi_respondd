@@ -35,8 +35,11 @@ class Config:
 
     multicast_address: str
     multicast_port: int
+    unicast_address: str
+    unicast_port: int
     interface: str
     verbose: bool = False
+    multicast_enabled: bool = True
 
     @classmethod
     def from_dict(cls, cfg: Dict[str, str]) -> "Config":
@@ -52,8 +55,11 @@ class Config:
             controller_port=cfg["controller_port"],
             username=cfg["username"],
             password=cfg["password"],
+            multicast_enabled=cfg["multicast_enabled"],
             multicast_address=cfg["multicast_address"],
             multicast_port=cfg["multicast_port"],
+            unicast_address=cfg["unicast_address"],
+            unicast_port=cfg["unicast_port"],
             interface=cfg["interface"],
             verbose=cfg["verbose"],
         )

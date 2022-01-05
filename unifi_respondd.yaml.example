@@ -2,7 +2,10 @@ controller_url: unifi.lan
 controller_port: 8443
 username: ubnt
 password: ubnt
+multicast_enabled: false
 multicast_address: ff05::2:1001
 multicast_port: 1001
+unicast_address: fe80::68ff:94ff:fe00:1504
+unicast_port: 10001
 interface: eth0
 verbose: true
