@@ -1,12 +1,14 @@
 #!/usr/bin/env python3
 
+from json import load
 from geopy.point import Point
-from unificontrol import UnifiClient
+from pyunifi.controller import Controller
 from typing import List
 from geopy.geocoders import Nominatim
+from unifi_respondd import config
 import time
 import dataclasses
-from unifi_respondd import config
+import re
 
 @dataclasses.dataclass
 class Accesspoint:
@@ -59,61 +61,17 @@ class Accesspoints:
 
     accesspoints: List[Accesspoint]
 
-
-def get_sites(cfg):
-    """This function returns a list of sites."""
-    client = UnifiClient(
-        host=cfg.controller_url,
-        port=cfg.controller_port,
-        username=cfg.username,
-        password=cfg.password,
-        cert=None,
-    )
-    client.login()
-    sites = client.list_sites()
-    return sites
-
-
-def get_aps(cfg, site):
-    """This function returns a list of APs."""
-    client = UnifiClient(
-        host=cfg.controller_url,
-        port=cfg.controller_port,
-        username=cfg.username,
-        password=cfg.password,
-        cert=None,
-        site=site,
-    )
-    client.login()
-    aps = client.list_devices()
-    return aps
-
-
-def get_clients_for_site(cfg, site):
-    """This function returns a list of clients for a site."""
-    client = UnifiClient(
-        host=cfg.controller_url,
-        port=cfg.controller_port,
-        username=cfg.username,
-        password=cfg.password,
-        cert=None,
-        site=site,
-    )
-    client.login()
-    clients = client.list_clients()
-    return clients
-
-
-def get_client_count_for_ap(ap_mac, clients):
+def get_client_count_for_ap(ap_mac, clients, cfg):
     """This function returns the number total clients, 2,4Ghz clients and 5Ghz clients connected to an AP."""
     client5_count = 0
     client24_count = 0
     for client in clients:
-        if client.get("ap_mac", "No mac") == ap_mac:
-            if client.get("channel", 0) > 14:
-                client5_count += 1
-            else:
-                client24_count += 1
+        if re.search(cfg.ssid_regex, client.get("essid", "")):
+            if client.get("ap_mac", "No mac") == ap_mac:
+                if client.get("channel", 0) > 14:
+                    client5_count += 1
+                else:
+                    client24_count += 1
     return client24_count + client5_count, client24_count, client5_count
 
 
@@ -132,46 +90,55 @@ def get_location_by_address(address, app):
 def get_infos():
     """This function gathers all the information and returns a list of Accesspoint objects."""
     cfg = config.Config.from_dict(config.load_config())
+    c = Controller(host=cfg.controller_url, username=cfg.username, password=cfg.password, port=cfg.controller_port, version=cfg.version, ssl_verify=cfg.ssl_verify)
     geolookup = Nominatim(user_agent="ffmuc_respondd")
     aps = Accesspoints(accesspoints=[])
-    for site in get_sites(cfg):
-        aps_for_site = get_aps(cfg, site["name"])
-        clients = get_clients_for_site(cfg, site["name"])
+    for site in c.get_sites():
+        c = Controller(host=cfg.controller_url, username=cfg.username, password=cfg.password, port=cfg.controller_port, version=cfg.version, site_id=site["name"], ssl_verify=False)
+        aps_for_site = c.get_aps()
+        clients = c.get_clients()
         for ap in aps_for_site:
-            if ap.get("name", None) is not None and ap.get("state", 0) != 0:
-                client_count, client_count24, client_count5 = get_client_count_for_ap(
-                    ap.get("mac", None), clients
-                )
-                lat, lon = 0, 0
-                if ap.get("snmp_location", None) is not None:
-                    try:
-                        lat, lon = get_location_by_address(
-                            ap["snmp_location"], geolookup
-                        )
-                    except:
-                        pass
-                aps.accesspoints.append(
-                    Accesspoint(
-                        name=ap.get("name", None),
-                        mac=ap.get("mac", None),
-                        snmp_location=ap.get("snmp_location", None),
-                        client_count=client_count,
-                        client_count24=client_count24,
-                        client_count5=client_count5,
-                        latitude=float(lat),
-                        longitude=float(lon),
-                        model=ap.get("model", None),
-                        firmware=ap.get("version", None),
-                        uptime=ap.get("uptime", None),
-                        contact=ap.get("snmp_contact", None),
-                        load_avg=float(ap.get("sys_stats", {}).get("loadavg_1", 0.0)),
-                        mem_used=ap.get("sys_stats", {}).get("mem_used", 0),
-                        mem_buffer=ap.get("sys_stats", {}).get("mem_buffer", 0),
-                        mem_total=ap.get("sys_stats", {}).get("mem_total", 0),
-                        tx_bytes=ap.get("tx_bytes", 0),
-                        rx_bytes=ap.get("rx_bytes", 0),
+            if ap.get("name", None) is not None and ap.get("state", 0) != 0 and ap.get("radio_table", None) is not None:
+                ssids = ap.get("vap_table", None)
+                containsSSID = False
+                if ssids is not None:
+                    for ssid in ssids:
+                        if re.search(cfg.ssid_regex, ssid.get("essid", "")):
+                            containsSSID = True
+                if containsSSID:
+                    client_count, client_count24, client_count5 = get_client_count_for_ap(
+                        ap.get("mac", None), clients, cfg
                     )
-                )
+                    lat, lon = 0, 0
+                    if ap.get("snmp_location", None) is not None:
+                        try:
+                            lat, lon = get_location_by_address(
+                                ap["snmp_location"], geolookup
+                            )
+                        except:
+                            pass
+                    aps.accesspoints.append(
+                        Accesspoint(
+                            name=ap.get("name", None),
+                            mac=ap.get("mac", None),
+                            snmp_location=ap.get("snmp_location", None),
+                            client_count=client_count,
+                            client_count24=client_count24,
+                            client_count5=client_count5,
+                            latitude=float(lat),
+                            longitude=float(lon),
+                            model=ap.get("model", None),
+                            firmware=ap.get("version", None),
+                            uptime=ap.get("uptime", None),
+                            contact=ap.get("snmp_contact", None),
+                            load_avg=float(ap.get("sys_stats", {}).get("loadavg_1", 0.0)),
+                            mem_used=ap.get("sys_stats", {}).get("mem_used", 0),
+                            mem_buffer=ap.get("sys_stats", {}).get("mem_buffer", 0),
+                            mem_total=ap.get("sys_stats", {}).get("mem_total", 0),
+                            tx_bytes=ap.get("tx_bytes", 0),
+                            rx_bytes=ap.get("rx_bytes", 0),
+                        )
+                    )
     return aps
 
 

@@ -8,6 +8,9 @@ controller_url: unifi.lan
 controller_port: 8443
 username: ubnt
 password: ubnt
+ssid_regex: .*freifunk.*
+version: v5
+ssl_verify: True
 multicast_enabled: false
 multicast_address: ff05::2:1001
 multicast_port: 1001

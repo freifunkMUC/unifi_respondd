@@ -32,6 +32,7 @@ class Config:
     controller_port: int
     username: str
     password: str
+    ssid_regex: str
 
     multicast_address: str
     multicast_port: int
@@ -40,6 +41,9 @@ class Config:
     interface: str
     verbose: bool = False
     multicast_enabled: bool = True
+
+    version: str = "v5"
+    ssl_verify: bool = True
 
     @classmethod
     def from_dict(cls, cfg: Dict[str, str]) -> "Config":
@@ -55,6 +59,9 @@ class Config:
             controller_port=cfg["controller_port"],
             username=cfg["username"],
             password=cfg["password"],
+            ssid_regex=cfg["ssid_regex"],
+            version=cfg["version"],
+            ssl_verify=cfg["ssl_verify"],
             multicast_enabled=cfg["multicast_enabled"],
             multicast_address=cfg["multicast_address"],
             multicast_port=cfg["multicast_port"],
