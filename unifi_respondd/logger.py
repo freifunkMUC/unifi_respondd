@@ -8,7 +8,7 @@ from logging import debug as debug
 from logging import config
 import yaml
 import os.path
-from config import UNIFI_RESPONDD_CONFIG_DEFAULT_LOCATION
+from unifi_respondd.config import UNIFI_RESPONDD_CONFIG_DEFAULT_LOCATION
 
 _LOGGING_DEFAULT_CONFIG = {
     "version": 1,
