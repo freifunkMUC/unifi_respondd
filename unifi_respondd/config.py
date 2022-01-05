@@ -32,6 +32,7 @@ class Config:
     controller_port: int
     username: str
     password: str
+    ssid_regex = str
 
     multicast_address: str
     multicast_port: int
@@ -58,6 +59,7 @@ class Config:
             controller_port=cfg["controller_port"],
             username=cfg["username"],
             password=cfg["password"],
+            ssid_regex=cfg["ssid_regex"],
             version=cfg["version"],
             ssl_verify=cfg["ssl_verify"],
             multicast_enabled=cfg["multicast_enabled"],

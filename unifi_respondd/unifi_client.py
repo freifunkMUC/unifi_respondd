@@ -1,12 +1,14 @@
 #!/usr/bin/env python3
 
+from json import load
 from geopy.point import Point
 from pyunifi.controller import Controller
 from typing import List
 from geopy.geocoders import Nominatim
+from unifi_respondd import config
 import time
 import dataclasses
-from unifi_respondd import config
+import re
 
 
 @dataclasses.dataclass
@@ -97,40 +99,47 @@ def get_infos():
         aps_for_site = c.get_aps()
         clients = c.get_clients()
         for ap in aps_for_site:
-            if ap.get("name", None) is not None and ap.get("state", 0) != 0:
-                client_count, client_count24, client_count5 = get_client_count_for_ap(
-                    ap.get("mac", None), clients
-                )
-                lat, lon = 0, 0
-                if ap.get("snmp_location", None) is not None:
-                    try:
-                        lat, lon = get_location_by_address(
-                            ap["snmp_location"], geolookup
-                        )
-                    except:
-                        pass
-                aps.accesspoints.append(
-                    Accesspoint(
-                        name=ap.get("name", None),
-                        mac=ap.get("mac", None),
-                        snmp_location=ap.get("snmp_location", None),
-                        client_count=client_count,
-                        client_count24=client_count24,
-                        client_count5=client_count5,
-                        latitude=float(lat),
-                        longitude=float(lon),
-                        model=ap.get("model", None),
-                        firmware=ap.get("version", None),
-                        uptime=ap.get("uptime", None),
-                        contact=ap.get("snmp_contact", None),
-                        load_avg=float(ap.get("sys_stats", {}).get("loadavg_1", 0.0)),
-                        mem_used=ap.get("sys_stats", {}).get("mem_used", 0),
-                        mem_buffer=ap.get("sys_stats", {}).get("mem_buffer", 0),
-                        mem_total=ap.get("sys_stats", {}).get("mem_total", 0),
-                        tx_bytes=ap.get("tx_bytes", 0),
-                        rx_bytes=ap.get("rx_bytes", 0),
+            if ap.get("name", None) is not None and ap.get("state", 0) != 0 and ap.get("radio_table", None) is not None:
+                ssids = ap.get("vap_table", None)
+                containsSSID = False
+                if ssids is not None:
+                    for ssid in ssids:
+                        if re.search(cfg.ssid_regex, ssid.get("essid", None)):
+                            containsSSID = True
+                if containsSSID:
+                    client_count, client_count24, client_count5 = get_client_count_for_ap(
+                        ap.get("mac", None), clients
                     )
-                )
+                    lat, lon = 0, 0
+                    if ap.get("snmp_location", None) is not None:
+                        try:
+                            lat, lon = get_location_by_address(
+                                ap["snmp_location"], geolookup
+                            )
+                        except:
+                            pass
+                    aps.accesspoints.append(
+                        Accesspoint(
+                            name=ap.get("name", None),
+                            mac=ap.get("mac", None),
+                            snmp_location=ap.get("snmp_location", None),
+                            client_count=client_count,
+                            client_count24=client_count24,
+                            client_count5=client_count5,
+                            latitude=float(lat),
+                            longitude=float(lon),
+                            model=ap.get("model", None),
+                            firmware=ap.get("version", None),
+                            uptime=ap.get("uptime", None),
+                            contact=ap.get("snmp_contact", None),
+                            load_avg=float(ap.get("sys_stats", {}).get("loadavg_1", 0.0)),
+                            mem_used=ap.get("sys_stats", {}).get("mem_used", 0),
+                            mem_buffer=ap.get("sys_stats", {}).get("mem_buffer", 0),
+                            mem_total=ap.get("sys_stats", {}).get("mem_total", 0),
+                            tx_bytes=ap.get("tx_bytes", 0),
+                            rx_bytes=ap.get("rx_bytes", 0),
+                        )
+                    )
     return aps
 
 
