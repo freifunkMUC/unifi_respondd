@@ -68,12 +68,11 @@ def get_client_count_for_ap(ap_mac, clients, cfg):
     client24_count = 0
     for client in clients:
         if re.search(cfg.ssid_regex, client.get("essid", "")):
-            continue
-        if client.get("ap_mac", "No mac") == ap_mac:
-            if client.get("channel", 0) > 14:
-                client5_count += 1
-            else:
-                client24_count += 1
+            if client.get("ap_mac", "No mac") == ap_mac:
+                if client.get("channel", 0) > 14:
+                    client5_count += 1
+                else:
+                    client24_count += 1
     return client24_count + client5_count, client24_count, client5_count
 
 
