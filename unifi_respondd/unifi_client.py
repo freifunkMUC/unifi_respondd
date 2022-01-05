@@ -10,7 +10,6 @@ import time
 import dataclasses
 import re
 
-
 @dataclasses.dataclass
 class Accesspoint:
     """This class contains the information of an AP.
@@ -87,7 +86,6 @@ def get_location_by_address(address, app):
             return app.geocode(address).raw["lat"], app.geocode(address).raw["lon"]
         except:
             return get_location_by_address(address)
-
 
 def get_infos():
     """This function gathers all the information and returns a list of Accesspoint objects."""
