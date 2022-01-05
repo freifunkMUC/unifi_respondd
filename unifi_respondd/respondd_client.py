@@ -41,6 +41,7 @@ class HardwareInfo:
         model: The hardware model of the AP."""
 
     model: str
+    nproc: int = 1
 
 
 @dataclasses.dataclass
