@@ -2,7 +2,7 @@
 
 from json import load
 from geopy.point import Point
-from unificontrol import UnifiClient
+from pyunifi.controller import Controller
 from typing import List
 from geopy.geocoders import Nominatim
 import time
@@ -61,51 +61,6 @@ class Accesspoints:
 
     accesspoints: List[Accesspoint]
 
-
-def get_sites(cfg):
-    """This function returns a list of sites."""
-    client = UnifiClient(
-        host=cfg.controller_url,
-        port=cfg.controller_port,
-        username=cfg.username,
-        password=cfg.password,
-        cert=None,
-    )
-    client.login()
-    sites = client.list_sites()
-    return sites
-
-
-def get_aps(cfg, site):
-    """This function returns a list of APs."""
-    client = UnifiClient(
-        host=cfg.controller_url,
-        port=cfg.controller_port,
-        username=cfg.username,
-        password=cfg.password,
-        cert=None,
-        site=site,
-    )
-    client.login()
-    aps = client.list_devices()
-    return aps
-
-
-def get_clients_for_site(cfg, site):
-    """This function returns a list of clients for a site."""
-    client = UnifiClient(
-        host=cfg.controller_url,
-        port=cfg.controller_port,
-        username=cfg.username,
-        password=cfg.password,
-        cert=None,
-        site=site,
-    )
-    client.login()
-    clients = client.list_clients()
-    return clients
-
-
 def get_client_count_for_ap(ap_mac, clients):
     """This function returns the number total clients, 2,4Ghz clients and 5Ghz clients connected to an AP."""
     client5_count = 0
@@ -135,11 +90,13 @@ def get_location_by_address(address, app):
 def get_infos():
     """This function gathers all the information and returns a list of Accesspoint objects."""
     cfg = config.Config.from_dict(config.load_config())
+    c = Controller(host=cfg.controller_url, username=cfg.username, password=cfg.password, port=cfg.controller_port, version=cfg.version, ssl_verify=False)
     geolookup = Nominatim(user_agent="ffmuc_respondd")
     aps = Accesspoints(accesspoints=[])
-    for site in get_sites(cfg):
-        aps_for_site = get_aps(cfg, site["name"])
-        clients = get_clients_for_site(cfg, site["name"])
+    for site in c.get_sites():
+        c = Controller(host=cfg.controller_url, username=cfg.username, password=cfg.password, port=cfg.controller_port, version=cfg.version, site=site["name"], ssl_verify=False)
+        aps_for_site = c.get_aps
+        clients = c.get_clients()
         for ap in aps_for_site:
             if ap.get("name", None) is not None and ap.get("state", 0) != 0:
                 client_count, client_count24, client_count5 = get_client_count_for_ap(
