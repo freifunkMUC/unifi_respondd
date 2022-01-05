@@ -12,7 +12,7 @@ digraph G {
     color=lightgrey;
     style="dotted"
     node [style=filled,color="#d8b365"];
-    unifi_client [label="*Unifi Client*"];
+    unifi_client [label="*unifi_client*"];
     fontsize = 20;
   }
 
@@ -21,7 +21,7 @@ digraph G {
     color=lightgrey;
     style="dotted"
     node [style=filled,color="#d8b365"];
-    unifi_client [label="*Unifi Client*"];
+    yanic [label="*yanic*"];
     fontsize = 20;
   }
 
@@ -40,11 +40,11 @@ digraph G {
     fontsize = 20;
     color=blue
     multicast -> respondd_client -> multicast[style=invis];
-    respondd_client [label="*Respondd Client*"];
+    respondd_client [label="*respondd_client*"];
   }
 
   yanic [shape=Mdiamond];
-  
+
   unifi_client -> unifi_controller [label="RESTFul API"];
   respondd_client -> multicast [label="publish"];
   respondd_client -> multicast [label="Subscribe"];
