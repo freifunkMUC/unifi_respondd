@@ -16,6 +16,15 @@ digraph G {
     fontsize = 20;
   }
 
+  subgraph yanic {
+    style=filled;
+    color=lightgrey;
+    style="dotted"
+    node [style=filled,color="#d8b365"];
+    unifi_client [label="*Unifi Client*"];
+    fontsize = 20;
+  }
+
  subgraph respondd {
     node [style=filled,color="#f5f5f5"];
     style="dotted"
@@ -27,16 +36,22 @@ digraph G {
     node [style=filled,color="#5ab4ac"];
     style="dotted"
     color=blue;
-    label = "*WGKEX Worker*";
+    label = "*respondd_client*";
     fontsize = 20;
     color=blue
     multicast -> respondd_client -> multicast[style=invis];
     respondd_client [label="*Respondd Client*"];
   }
+
+  yanic [shape=Mdiamond];
+  
   unifi_client -> unifi_controller [label="RESTFul API"];
   respondd_client -> multicast [label="publish"];
   respondd_client -> multicast [label="Subscribe"];
+  respondd_client -> unicast [label="Send per interval"];
+  unicast -> yanic [label="Receive"]
+  multicast -> yanic [label="Request metrics"]
   {respondd [shape=Mdiamond];}
-  {rank=same unifi_controller multicast}
+  {rank=same unifi_controller multicast unicast}
   {rank=same unifi_client respondd_client}
 }
