@@ -38,7 +38,6 @@ digraph G {
   respondd [shape=Mdiamond]
   
   unifi_client -> unifi_controller [label="RESTFul API"];
-  respondd_client -> multicast [label="publish"];
   respondd_client -> multicast [label="Subscribe"];
   respondd_client -> unicast [label="Send per interval"];
   unicast -> yanic [label="Receive"]
