@@ -94,8 +94,6 @@ def get_infos():
     geolookup = Nominatim(user_agent="ffmuc_respondd")
     aps = Accesspoints(accesspoints=[])
     for site in c.get_sites():
-        print(site)
-        continue
         c = Controller(host=cfg.controller_url, username=cfg.username, password=cfg.password, port=cfg.controller_port, version=cfg.version, site_id=site["name"], ssl_verify=False)
         aps_for_site = c.get_aps
         clients = c.get_clients()
