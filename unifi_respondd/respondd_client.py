@@ -326,7 +326,7 @@ class ResponddClient:
     def sendStruct(self, destAddress, responseStruct, withCompression):
         """This method sends the response structure to the respondd server."""
         logger.debug(
-            destAddress[0] + " " + destAddress[1] + " " + str(responseStruct)
+            str(destAddress[0]) + " " + str(destAddress[1]) + " " + str(responseStruct)
         )
 
         merged = self.merge_node(responseStruct)
@@ -335,7 +335,7 @@ class ResponddClient:
             for key, info in infos.items():
                 node.update({key: info.to_dict()})
             responseData = bytes(json.dumps(node), "UTF-8")
-            logger.info(responseData)
+            logger.info(str(responseData))
 
             if withCompression:
                 encoder = zlib.compressobj(
