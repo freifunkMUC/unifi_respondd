@@ -7,7 +7,6 @@ from geopy.geocoders import Nominatim
 import time
 import dataclasses
 from unifi_respondd import config
-from functools import lru_cache
 
 @dataclasses.dataclass
 class Accesspoint:
@@ -130,7 +129,6 @@ def get_location_by_address(address, app):
         except:
             return get_location_by_address(address)
 
-@lru_cache(maxsize=2)
 def get_infos():
     """This function gathers all the information and returns a list of Accesspoint objects."""
     cfg = config.Config.from_dict(config.load_config())
