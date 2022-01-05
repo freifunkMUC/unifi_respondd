@@ -8,8 +8,9 @@ import time
 
 import dataclasses
 from dataclasses_json import dataclass_json
-import unifi_client
-import logger
+from unifi_respondd import unifi_client
+from unifi_respondd import logger
+
 
 @dataclasses.dataclass
 class FirmwareInfo:

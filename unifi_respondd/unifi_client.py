@@ -1,13 +1,12 @@
 #!/usr/bin/env python3
 
-from json import load
 from geopy.point import Point
 from unificontrol import UnifiClient
 from typing import List
 from geopy.geocoders import Nominatim
 import time
 import dataclasses
-import config
+from unifi_respondd import config
 
 
 @dataclasses.dataclass
