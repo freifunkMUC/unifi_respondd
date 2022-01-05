@@ -104,15 +104,18 @@ def get_infos():
     geolookup = Nominatim(user_agent="ffmuc_respondd")
     aps = Accesspoints(accesspoints=[])
     for site in c.get_sites():
-        c = Controller(
-            host=cfg.controller_url,
-            username=cfg.username,
-            password=cfg.password,
-            port=cfg.controller_port,
-            version=cfg.version,
-            site_id=site["name"],
-            ssl_verify=cfg.ssl_verify,
-        )
+        if cfg.version == "UDMP-unifiOS":
+            c = Controller(
+                host=cfg.controller_url,
+                username=cfg.username,
+                password=cfg.password,
+                port=cfg.controller_port,
+                version=cfg.version,
+                site_id=site["name"],
+                ssl_verify=cfg.ssl_verify,
+            )
+        else:
+            c.switch_site(site["desc"])
         aps_for_site = c.get_aps()
         clients = c.get_clients()
         for ap in aps_for_site:
