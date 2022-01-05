@@ -1,0 +1,42 @@
+# http://www.graphviz.org/content/cluster
+
+digraph G {
+  graph [fontname = "Handlee"];
+  node [fontname = "Handlee"];
+  edge [fontname = "Handlee"];
+
+  bgcolor=transparent;
+
+  subgraph unifi_client {
+    style=filled;
+    color=lightgrey;
+    style="dotted"
+    node [style=filled,color="#d8b365"];
+    unifi_client [label="*Unifi Client*"];
+    fontsize = 20;
+  }
+
+ subgraph respondd {
+    node [style=filled,color="#f5f5f5"];
+    style="dotted"
+    respondd [label="*respondd_main*"];
+    fontsize = 20;
+    color=blue
+  }
+  subgraph respondd_client {
+    node [style=filled,color="#5ab4ac"];
+    style="dotted"
+    color=blue;
+    label = "*WGKEX Worker*";
+    fontsize = 20;
+    color=blue
+    multicast -> respondd_client -> multicast[style=invis];
+    respondd_client [label="*Respondd Client*"];
+  }
+  unifi_client -> unifi_controller [label="RESTFul API"];
+  respondd_client -> multicast [label="publish"];
+  respondd_client -> multicast [label="Subscribe"];
+  {respondd [shape=Mdiamond];}
+  {rank=same unifi_controller multicast}
+  {rank=same unifi_client respondd_client}
+}
