@@ -90,7 +90,7 @@ def get_location_by_address(address, app):
 def get_infos():
     """This function gathers all the information and returns a list of Accesspoint objects."""
     cfg = config.Config.from_dict(config.load_config())
-    c = Controller(host=cfg.controller_url, username=cfg.username, password=cfg.password, port=cfg.controller_port, version=cfg.version, ssl_verify=False)
+    c = Controller(host=cfg.controller_url, username=cfg.username, password=cfg.password, port=cfg.controller_port, version=cfg.version, ssl_verify=cfg.ssl_verify)
     geolookup = Nominatim(user_agent="ffmuc_respondd")
     aps = Accesspoints(accesspoints=[])
     for site in c.get_sites():

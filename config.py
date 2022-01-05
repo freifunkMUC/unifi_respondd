@@ -32,6 +32,8 @@ class Config:
     controller_port: int
     username: str
     password: str
+    version: str = "v5"
+    ssl_verify: bool = True
 
     multicast_address: str
     multicast_port: int
@@ -55,6 +57,8 @@ class Config:
             controller_port=cfg["controller_port"],
             username=cfg["username"],
             password=cfg["password"],
+            version=cfg["version"],
+            ssl_verify=cfg["ssl_verify"],
             multicast_enabled=cfg["multicast_enabled"],
             multicast_address=cfg["multicast_address"],
             multicast_port=cfg["multicast_port"],
