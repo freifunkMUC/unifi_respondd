@@ -9,7 +9,7 @@ import time
 import dataclasses
 from dataclasses_json import dataclass_json
 import unifi_client
-
+import logger
 
 @dataclasses.dataclass
 class FirmwareInfo:
@@ -249,8 +249,7 @@ class ResponddClient:
 
     def listenMulticast(self):
         msg, sourceAddress = self._sock.recvfrom(2048)
-        if self._config.verbose:
-            print("Using multicast method")
+        logger.info("Using multicast method")
         msgSplit = str(msg, "UTF-8").split(" ")
 
         return msgSplit, sourceAddress
@@ -258,13 +257,12 @@ class ResponddClient:
     def sendUnicast(self):
         timeStart = time.time()
 
-        if self._config.verbose:
-            print("Using unicast method")
+        logger.info("Using unicast method")
 
         timeStop = time.time()
         timeSleep = int(60 - (timeStop - timeStart) % 60)
         if self._config.verbose:
-            print("will now sleep " + str(timeSleep) + " seconds")
+            logger.debug("will now sleep " + str(timeSleep) + " seconds")
         time.sleep(timeSleep)
 
     def start(self):
@@ -302,7 +300,6 @@ class ResponddClient:
         """This method merges the node information of all APs to their corresponding node_id."""
         merged = {}
         for key in responseStruct.keys():
-            print(key)
             if responseStruct[key]:
                 for info in responseStruct[key]:
                     if info.node_id not in merged:
@@ -320,26 +317,25 @@ class ResponddClient:
         elif responseType == "nodeinfo":
             responseClass = self._nodeinfos
         else:
-            print("unknown command: " + responseType)
+            logger.warning("unknown command: " + responseType)
             return
 
         return responseClass
 
     def sendStruct(self, destAddress, responseStruct, withCompression):
         """This method sends the response structure to the respondd server."""
-        if self._config.verbose:
-            print(
-                "%14.3f %35s %5d: " % (time.time(), destAddress[0], destAddress[1]),
-                end="",
-            )
-            print(responseStruct)
+        logger.debug(
+            "%14.3f %35s %5d: " % (time.time(), destAddress[0], destAddress[1]),
+            end="",
+        )
+        logger.debug(responseStruct)
         merged = self.merge_node(responseStruct)
         for infos in merged.values():
             node = {}
             for key, info in infos.items():
                 node.update({key: info.to_dict()})
             responseData = bytes(json.dumps(node), "UTF-8")
-            print(responseData)
+            logger.info(responseData)
 
             if withCompression:
                 encoder = zlib.compressobj(
