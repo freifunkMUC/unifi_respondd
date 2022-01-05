@@ -247,6 +247,26 @@ class ResponddClient:
             )
         return statistics
 
+    def listenMulticast(self):
+        msg, sourceAddress = self._sock.recvfrom(2048)
+        if self._config.verbose:
+            print("Using multicast method")
+        msgSplit = str(msg, "UTF-8").split(" ")
+
+        return msgSplit, sourceAddress
+
+    def sendUnicast(self):
+        timeStart = time.time()
+
+        if self._config.verbose:
+            print("Using unicast method")
+
+        timeStop = time.time()
+        timeSleep = int(60 - (timeStop - timeStart) % 60)
+        if self._config.verbose:
+            print("will now sleep " + str(timeSleep) + " seconds")
+        time.sleep(timeSleep)
+
     def start(self):
         """This method starts the respondd client."""
         self._sock.setsockopt(
@@ -263,35 +283,20 @@ class ResponddClient:
 
         while True:
             responseStruct = {}
+            sourceAddress = (self._config.unicast_address, self._config.unicast_port)
+            msgSplit = ["GET", "nodeinfo", "statistics"]
 
             if self._config.multicast_enabled:
-                msg, sourceAddress = self._sock.recvfrom(2048)
-
-                msgSplit = str(msg, "UTF-8").split(" ")
-
-                if msgSplit[0] == "GET":  # multi_request
-                    for request in msgSplit[1:]:
-                        responseStruct[request] = self.buildStruct(request)
-                    self.sendStruct(sourceAddress, responseStruct, True)
-                else:  # single_request
-                    responseStruct = self.buildStruct(msgSplit[0])
-                    self.sendStruct(sourceAddress, responseStruct, False)
+                msgSplit, sourceAddress = self.listenMulticast()
             else:
-                timeStart = time.time()
-                msgSplit = ['GET', 'nodeinfo', 'statistics']
-
+                self.sendUnicast()
+            if msgSplit[0] == "GET":  # multi_request
                 for request in msgSplit[1:]:
                     responseStruct[request] = self.buildStruct(request)
-                self.sendStruct((self._config.unicast_address, self._config.unicast_port), responseStruct, True)
-                
-                if self._config.verbose:
-                    print ("data was send")
-
-                timeStop = time.time()
-                timeSleep = int (60 - (timeStop-timeStart) % 60)
-                if self._config.verbose:
-                    print("will now sleep " + str(timeSleep) + " seconds")
-                time.sleep(timeSleep)
+                self.sendStruct(sourceAddress, responseStruct, True)
+            else:  # single_request
+                responseStruct = self.buildStruct(msgSplit[0])
+                self.sendStruct(sourceAddress, responseStruct, False)
 
     def merge_node(self, responseStruct):
         """This method merges the node information of all APs to their corresponding node_id."""
