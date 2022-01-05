@@ -42,7 +42,7 @@ digraph G {
   respondd_client -> multicast [label="Subscribe"];
   respondd_client -> unicast [label="Send per interval"];
   unicast -> yanic [label="Receive"]
-  multicast -> yanic [label="Request metrics"]
+  yanic -> multicast [label="Request metrics"]
   respondd -> respondd_client
   respondd -> unifi_client
   {rank=same unifi_controller multicast unicast}
