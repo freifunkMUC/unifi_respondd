@@ -67,7 +67,7 @@ def get_client_count_for_ap(ap_mac, clients, cfg):
     client5_count = 0
     client24_count = 0
     for client in clients:
-        if re.search(cfg.ssid_regex, client.get("essid", None)):
+        if re.search(cfg.ssid_regex, client.get("essid", "")):
             continue
         if client.get("ap_mac", "No mac") == ap_mac:
             if client.get("channel", 0) > 14:
@@ -106,7 +106,7 @@ def get_infos():
                 containsSSID = False
                 if ssids is not None:
                     for ssid in ssids:
-                        if re.search(cfg.ssid_regex, ssid.get("essid", None)):
+                        if re.search(cfg.ssid_regex, ssid.get("essid", "")):
                             containsSSID = True
                 if containsSSID:
                     client_count, client_count24, client_count5 = get_client_count_for_ap(
