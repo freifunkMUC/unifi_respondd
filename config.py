@@ -32,8 +32,6 @@ class Config:
     controller_port: int
     username: str
     password: str
-    version: str = "v5"
-    ssl_verify: bool = True
 
     multicast_address: str
     multicast_port: int
@@ -42,6 +40,9 @@ class Config:
     interface: str
     verbose: bool = False
     multicast_enabled: bool = True
+
+    version: str = "v5"
+    ssl_verify: bool = True
 
     @classmethod
     def from_dict(cls, cfg: Dict[str, str]) -> "Config":
