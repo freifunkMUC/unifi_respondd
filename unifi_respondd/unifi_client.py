@@ -126,10 +126,14 @@ def get_infos():
             ):
                 ssids = ap.get("vap_table", None)
                 containsSSID = False
+                tx = 0
+                rx = 0
                 if ssids is not None:
                     for ssid in ssids:
                         if re.search(cfg.ssid_regex, ssid.get("essid", "")):
                             containsSSID = True
+                            tx = tx + ssid.get("tx_bytes", 0)
+                            rx = rx + ssid.get("rx_bytes", 0)
                 if containsSSID:
                     (
                         client_count,
@@ -164,8 +168,8 @@ def get_infos():
                             mem_used=ap.get("sys_stats", {}).get("mem_used", 0),
                             mem_buffer=ap.get("sys_stats", {}).get("mem_buffer", 0),
                             mem_total=ap.get("sys_stats", {}).get("mem_total", 0),
-                            tx_bytes=ap.get("tx_bytes", 0),
-                            rx_bytes=ap.get("rx_bytes", 0),
+                            tx_bytes=tx,
+                            rx_bytes=rx,
                         )
                     )
     return aps
