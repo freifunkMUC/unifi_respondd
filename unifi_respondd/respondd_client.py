@@ -175,11 +175,10 @@ class ResponddClient:
 
     def __init__(self, config):
         self._config = config
+        self._aps = None
+        self._timeStart = time.time()
+        self._timeStop = time.time()
         self._sock = socket.socket(socket.AF_INET6, socket.SOCK_DGRAM)
-
-    @property
-    def _aps(self):
-        return unifi_client.get_infos()
 
     @property
     def _nodeinfos(self):
@@ -257,12 +256,10 @@ class ResponddClient:
         return msgSplit, sourceAddress
 
     def sendUnicast(self):
-        timeStart = time.time()
-
         logger.info("Using unicast method")
 
-        timeStop = time.time()
-        timeSleep = int(60 - (timeStop - timeStart) % 60)
+        
+        timeSleep = int(60 - (self._timeStop - self._timeStart) % 60)
         if self._config.verbose:
             logger.debug("will now sleep " + str(timeSleep) + " seconds")
         time.sleep(timeSleep)
@@ -290,6 +287,8 @@ class ResponddClient:
                 msgSplit, sourceAddress = self.listenMulticast()
             else:
                 self.sendUnicast()
+            self._timeStart = time.time()
+            self._aps = unifi_client.get_infos()
             if msgSplit[0] == "GET":  # multi_request
                 for request in msgSplit[1:]:
                     responseStruct[request] = self.buildStruct(request)
@@ -297,6 +296,7 @@ class ResponddClient:
             else:  # single_request
                 responseStruct = self.buildStruct(msgSplit[0])
                 self.sendStruct(sourceAddress, responseStruct, False)
+            self._timeStop = time.time()
 
     def merge_node(self, responseStruct):
         """This method merges the node information of all APs to their corresponding node_id."""
