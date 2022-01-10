@@ -10,6 +10,7 @@ import dataclasses
 from dataclasses_json import dataclass_json
 from unifi_respondd import unifi_client
 from unifi_respondd import logger
+from typing import List, Dict
 
 
 @dataclasses.dataclass
@@ -61,6 +62,13 @@ class SoftwareInfo:
 
     firmware: FirmwareInfo
 
+@dataclasses.dataclass
+class InterfacesInfo:
+    other: List[str]
+
+@dataclasses.dataclass
+class IntInfo:
+    interfaces: InterfacesInfo
 
 @dataclasses.dataclass
 class NetworkInfo:
@@ -69,7 +77,7 @@ class NetworkInfo:
         mac: The MAC address of the AP."""
 
     mac: str
-
+    mesh: Dict[str, IntInfo]
 
 @dataclass_json
 @dataclasses.dataclass
@@ -168,7 +176,24 @@ class StatisticsInfo:
     loadavg: float
     memory: MemoryInfo
     traffic: TrafficInfo
+    gateway: str
+    gateway6: str
+    gateway_nexthop: str
 
+@dataclasses.dataclass
+class NeighbourDetails:
+    tq: int
+    lastseen: float
+
+@dataclasses.dataclass
+class Neighbours:
+    neighbours: Dict[str, NeighbourDetails]
+
+@dataclass_json
+@dataclasses.dataclass
+class NeighboursInfo:
+    node_id: str
+    batadv: Dict[str, Neighbours]
 
 class ResponddClient:
     """This class receives a request from the respondd server and returns the response."""
@@ -187,6 +212,10 @@ class ResponddClient:
     @property
     def _statistics(self):
         return self.getStatistics()
+
+    @property
+    def _neighbours(self):
+        return self.getNeighbours()
 
     @staticmethod
     def joinMCAST(sock, addr, ifname):
@@ -214,7 +243,7 @@ class ResponddClient:
                     location=LocationInfo(latitude=ap.latitude, longitude=ap.longitude),
                     hardware=HardwareInfo(model=ap.model),
                     owner=OwnerInfo(contact=ap.contact),
-                    network=NetworkInfo(mac=ap.mac),
+                    network=NetworkInfo(mac=ap.mac,mesh={"bat0": IntInfo(interfaces=InterfacesInfo(other=[ap.mac]))}),
                 )
             )
         return nodes
@@ -244,9 +273,31 @@ class ResponddClient:
                         tx=txInfo(bytes=int(ap.tx_bytes)),
                         rx=rxInfo(bytes=int(ap.rx_bytes)),
                     ),
+                    gateway=ap.gateway,
+                    gateway6=ap.gateway6,
+                    gateway_nexthop=ap.gateway_nexthop,
                 )
             )
         return statistics
+
+    def getNeighbours(self):
+        """This method returns the neighbour information of all APs."""
+        aps = self._aps
+        neighbours = []
+        for ap in aps.accesspoints:
+            if ap.neighbour_mac is not None:
+                neighbours.append(
+                    NeighboursInfo(
+                        node_id=ap.mac.replace(":", ""),
+                        batadv={ap.mac: Neighbours(
+                            neighbours={ap.neighbour_mac: NeighbourDetails(
+                                tq=255,
+                                lastseen=0.45
+                            )}
+                        )}
+                    )
+                )
+        return neighbours
 
     def listenMulticast(self):
         msg, sourceAddress = self._sock.recvfrom(2048)
@@ -281,7 +332,7 @@ class ResponddClient:
         while True:
             responseStruct = {}
             sourceAddress = (self._config.unicast_address, self._config.unicast_port)
-            msgSplit = ["GET", "nodeinfo", "statistics"]
+            msgSplit = ["GET", "nodeinfo", "statistics", "neighbours"]
 
             if self._config.multicast_enabled:
                 msgSplit, sourceAddress = self.listenMulticast()
@@ -318,6 +369,8 @@ class ResponddClient:
             responseClass = self._statistics
         elif responseType == "nodeinfo":
             responseClass = self._nodeinfos
+        elif responseType == 'neighbours':
+            responseClass = self._neighbours
         else:
             logger.warning("unknown command: " + responseType)
             return

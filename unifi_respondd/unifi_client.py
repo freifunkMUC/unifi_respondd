@@ -52,6 +52,10 @@ class Accesspoint:
     mem_buffer: int
     tx_bytes: int
     rx_bytes: int
+    gateway: str
+    gateway6: str
+    gateway_nexthop: str
+    neighbour_mac: str
 
 
 @dataclasses.dataclass
@@ -148,6 +152,11 @@ def get_infos():
                             )
                         except:
                             pass
+                    neighbour_mac = cfg.offloader_mac.get(site["desc"], None)
+                    offloader_mac = cfg.offloader_mac.get(site["desc"], "").replace(':', '')
+                    uplink = ap.get("uplink", None)
+                    if uplink is not None and uplink.get("ap_mac", None) is not None:
+                        neighbour_mac = uplink.get("ap_mac") 
                     aps.accesspoints.append(
                         Accesspoint(
                             name=ap.get("name", None),
@@ -170,6 +179,10 @@ def get_infos():
                             mem_total=ap.get("sys_stats", {}).get("mem_total", 0),
                             tx_bytes=tx,
                             rx_bytes=rx,
+                            gateway=offloader_mac,
+                            gateway6=offloader_mac,
+                            gateway_nexthop=offloader_mac,
+                            neighbour_mac=neighbour_mac,
                         )
                     )
     return aps
