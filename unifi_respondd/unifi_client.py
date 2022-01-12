@@ -6,10 +6,12 @@ from pyunifi.controller import Controller
 from typing import List
 from geopy.geocoders import Nominatim
 from unifi_respondd import config
+from requests import get as rget
 import time
 import dataclasses
 import re
 
+ffnodes = None
 
 @dataclasses.dataclass
 class Accesspoint:
@@ -93,10 +95,17 @@ def get_location_by_address(address, app):
         except:
             return get_location_by_address(address)
 
+def scrape(url):
+    """returns remote json"""
+    try:
+        return rget(url).json()
+    except Exception as ex:
+        print('Error: %s' %(ex))
 
 def get_infos():
     """This function gathers all the information and returns a list of Accesspoint objects."""
     cfg = config.Config.from_dict(config.load_config())
+    ffnodes = scrape(cfg.nodelist)
     c = Controller(
         host=cfg.controller_url,
         username=cfg.username,
@@ -153,7 +162,10 @@ def get_infos():
                         except:
                             pass
                     neighbour_mac = cfg.offloader_mac.get(site["desc"], None)
-                    offloader_mac = cfg.offloader_mac.get(site["desc"], "").replace(':', '')
+                    offloader_id = cfg.offloader_mac.get(site["desc"], "").replace(':', '')
+                    offloader = list(filter(lambda x:x["mac"]==cfg.offloader_mac.get(site["desc"], ""),ffnodes["nodes"]))[0]
+                    gateway = offloader["gateway"]
+                    gateway6 = offloader["gateway6"]
                     uplink = ap.get("uplink", None)
                     if uplink is not None and uplink.get("ap_mac", None) is not None:
                         neighbour_mac = uplink.get("ap_mac") 
@@ -179,9 +191,9 @@ def get_infos():
                             mem_total=ap.get("sys_stats", {}).get("mem_total", 0),
                             tx_bytes=tx,
                             rx_bytes=rx,
-                            gateway=offloader_mac,
-                            gateway6=offloader_mac,
-                            gateway_nexthop=offloader_mac,
+                            gateway=gateway,
+                            gateway6=gateway6,
+                            gateway_nexthop=offloader_id,
                             neighbour_mac=neighbour_mac,
                         )
                     )

@@ -34,6 +34,7 @@ class Config:
     password: str
     ssid_regex: str
     offloader_mac: Dict[str, str]
+    nodelist: str
 
     multicast_address: str
     multicast_port: int
@@ -62,6 +63,7 @@ class Config:
             password=cfg["password"],
             ssid_regex=cfg["ssid_regex"],
             offloader_mac=cfg["offloader_mac"],
+            nodelist=cfg["nodelist"],
             version=cfg["version"],
             ssl_verify=cfg["ssl_verify"],
             multicast_enabled=cfg["multicast_enabled"],
