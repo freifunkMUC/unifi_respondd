@@ -14,6 +14,10 @@ controller_port: 8443
 username: ubnt
 password: ubnt
 ssid_regex: .*freifunk.*
+offloader_mac:
+    SiteName: 00:00:00:00:00:00
+    SiteName2: 00:00:00:00:00:00
+nodelist: https://MAPURL/data/meshviewer.json
 version: v5
 ssl_verify: True
 multicast_enabled: false
