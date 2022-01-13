@@ -79,6 +79,10 @@ class NetworkInfo:
     mac: str
     mesh: Dict[str, IntInfo]
 
+@dataclasses.dataclass
+class SystemInfo:
+    domain_code: str
+
 @dataclass_json
 @dataclasses.dataclass
 class NodeInfo:
@@ -99,6 +103,7 @@ class NodeInfo:
     hardware: HardwareInfo
     owner: OwnerInfo
     network: NetworkInfo
+    system: SystemInfo
 
 
 @dataclasses.dataclass
@@ -244,6 +249,7 @@ class ResponddClient:
                     hardware=HardwareInfo(model=ap.model),
                     owner=OwnerInfo(contact=ap.contact),
                     network=NetworkInfo(mac=ap.mac,mesh={"bat0": IntInfo(interfaces=InterfacesInfo(other=[ap.mac]))}),
+                    system=SystemInfo(domain_code=ap.domain_code)
                 )
             )
         return nodes
