@@ -58,6 +58,7 @@ class Accesspoint:
     gateway6: str
     gateway_nexthop: str
     neighbour_mac: str
+    domain_code: str
 
 
 @dataclasses.dataclass
@@ -164,8 +165,6 @@ def get_infos():
                     neighbour_mac = cfg.offloader_mac.get(site["desc"], None)
                     offloader_id = cfg.offloader_mac.get(site["desc"], "").replace(':', '')
                     offloader = list(filter(lambda x:x["mac"]==cfg.offloader_mac.get(site["desc"], ""),ffnodes["nodes"]))[0]
-                    gateway = offloader["gateway"]
-                    gateway6 = offloader["gateway6"]
                     uplink = ap.get("uplink", None)
                     if uplink is not None and uplink.get("ap_mac", None) is not None:
                         neighbour_mac = uplink.get("ap_mac") 
@@ -191,10 +190,11 @@ def get_infos():
                             mem_total=ap.get("sys_stats", {}).get("mem_total", 0),
                             tx_bytes=tx,
                             rx_bytes=rx,
-                            gateway=gateway,
-                            gateway6=gateway6,
+                            gateway=offloader["gateway"],
+                            gateway6=offloader["gateway6"],
                             gateway_nexthop=offloader_id,
                             neighbour_mac=neighbour_mac,
+                            domain_code=offloader["domain"],
                         )
                     )
     return aps
