@@ -200,7 +200,7 @@ def get_infos():
                             gateway6=offloader.get("gateway6", None),
                             gateway_nexthop=offloader_id,
                             neighbour_mac=neighbour_mac,
-                            domain_code=offloader.get("domain", None),
+                            domain_code=offloader.get("domain", "ffmuc_unifi_fallback"),
                         )
                     )
     return aps
