@@ -14,6 +14,7 @@ import re
 
 ffnodes = None
 
+
 @dataclasses.dataclass
 class Accesspoint:
     """This class contains the information of an AP.
@@ -97,12 +98,14 @@ def get_location_by_address(address, app):
         except:
             return get_location_by_address(address)
 
+
 def scrape(url):
     """returns remote json"""
     try:
         return rget(url).json()
     except Exception as ex:
-        logger.error('Error: %s' %(ex))
+        logger.error("Error: %s" % (ex))
+
 
 def get_infos():
     """This function gathers all the information and returns a list of Accesspoint objects."""
@@ -118,7 +121,7 @@ def get_infos():
             ssl_verify=cfg.ssl_verify,
         )
     except Exception as ex:
-        logger.error('Error: %s' %(ex))
+        logger.error("Error: %s" % (ex))
         return
     geolookup = Nominatim(user_agent="ffmuc_respondd")
     aps = Accesspoints(accesspoints=[])
@@ -169,8 +172,16 @@ def get_infos():
                             pass
                     try:
                         neighbour_mac = cfg.offloader_mac.get(site["desc"], None)
-                        offloader_id = cfg.offloader_mac.get(site["desc"], "").replace(':', '')
-                        offloader = list(filter(lambda x:x["mac"]==cfg.offloader_mac.get(site["desc"], ""),ffnodes["nodes"]))[0]
+                        offloader_id = cfg.offloader_mac.get(site["desc"], "").replace(
+                            ":", ""
+                        )
+                        offloader = list(
+                            filter(
+                                lambda x: x["mac"]
+                                == cfg.offloader_mac.get(site["desc"], ""),
+                                ffnodes["nodes"],
+                            )
+                        )[0]
                     except:
                         neighbour_mac = None
                         offloader_id = None
@@ -178,7 +189,7 @@ def get_infos():
                         pass
                     uplink = ap.get("uplink", None)
                     if uplink is not None and uplink.get("ap_mac", None) is not None:
-                        neighbour_mac = uplink.get("ap_mac") 
+                        neighbour_mac = uplink.get("ap_mac")
                     aps.accesspoints.append(
                         Accesspoint(
                             name=ap.get("name", None),
@@ -205,7 +216,9 @@ def get_infos():
                             gateway6=offloader.get("gateway6", None),
                             gateway_nexthop=offloader_id,
                             neighbour_mac=neighbour_mac,
-                            domain_code=offloader.get("domain", "ffmuc_unifi_respondd_fallback"),
+                            domain_code=offloader.get(
+                                "domain", "ffmuc_unifi_respondd_fallback"
+                            ),
                         )
                     )
     return aps
