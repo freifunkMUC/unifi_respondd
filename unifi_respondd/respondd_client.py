@@ -62,13 +62,16 @@ class SoftwareInfo:
 
     firmware: FirmwareInfo
 
+
 @dataclasses.dataclass
 class InterfacesInfo:
     other: List[str]
 
+
 @dataclasses.dataclass
 class IntInfo:
     interfaces: InterfacesInfo
+
 
 @dataclasses.dataclass
 class NetworkInfo:
@@ -79,9 +82,11 @@ class NetworkInfo:
     mac: str
     mesh: Dict[str, IntInfo]
 
+
 @dataclasses.dataclass
 class SystemInfo:
     domain_code: str
+
 
 @dataclass_json
 @dataclasses.dataclass
@@ -185,20 +190,24 @@ class StatisticsInfo:
     gateway6: str
     gateway_nexthop: str
 
+
 @dataclasses.dataclass
 class NeighbourDetails:
     tq: int
     lastseen: float
 
+
 @dataclasses.dataclass
 class Neighbours:
     neighbours: Dict[str, NeighbourDetails]
+
 
 @dataclass_json
 @dataclasses.dataclass
 class NeighboursInfo:
     node_id: str
     batadv: Dict[str, Neighbours]
+
 
 class ResponddClient:
     """This class receives a request from the respondd server and returns the response."""
@@ -248,8 +257,13 @@ class ResponddClient:
                     location=LocationInfo(latitude=ap.latitude, longitude=ap.longitude),
                     hardware=HardwareInfo(model=ap.model),
                     owner=OwnerInfo(contact=ap.contact),
-                    network=NetworkInfo(mac=ap.mac,mesh={"bat0": IntInfo(interfaces=InterfacesInfo(other=[ap.mac]))}),
-                    system=SystemInfo(domain_code=ap.domain_code)
+                    network=NetworkInfo(
+                        mac=ap.mac,
+                        mesh={
+                            "bat0": IntInfo(interfaces=InterfacesInfo(other=[ap.mac]))
+                        },
+                    ),
+                    system=SystemInfo(domain_code=ap.domain_code),
                 )
             )
         return nodes
@@ -295,12 +309,15 @@ class ResponddClient:
                 neighbours.append(
                     NeighboursInfo(
                         node_id=ap.mac.replace(":", ""),
-                        batadv={ap.mac: Neighbours(
-                            neighbours={ap.neighbour_mac: NeighbourDetails(
-                                tq=255,
-                                lastseen=0.45
-                            )}
-                        )}
+                        batadv={
+                            ap.mac: Neighbours(
+                                neighbours={
+                                    ap.neighbour_mac: NeighbourDetails(
+                                        tq=255, lastseen=0.45
+                                    )
+                                }
+                            )
+                        },
                     )
                 )
         return neighbours
@@ -315,7 +332,6 @@ class ResponddClient:
     def sendUnicast(self):
         logger.info("Using unicast method")
 
-        
         timeSleep = int(60 - (self._timeStop - self._timeStart) % 60)
         if self._config.verbose:
             logger.debug("will now sleep " + str(timeSleep) + " seconds")
@@ -346,6 +362,8 @@ class ResponddClient:
                 self.sendUnicast()
             self._timeStart = time.time()
             self._aps = unifi_client.get_infos()
+            if self._aps is None:
+                continue
             if msgSplit[0] == "GET":  # multi_request
                 for request in msgSplit[1:]:
                     responseStruct[request] = self.buildStruct(request)
@@ -375,7 +393,7 @@ class ResponddClient:
             responseClass = self._statistics
         elif responseType == "nodeinfo":
             responseClass = self._nodeinfos
-        elif responseType == 'neighbours':
+        elif responseType == "neighbours":
             responseClass = self._neighbours
         else:
             logger.warning("unknown command: " + responseType)
