@@ -346,6 +346,8 @@ class ResponddClient:
                 self.sendUnicast()
             self._timeStart = time.time()
             self._aps = unifi_client.get_infos()
+            if self._aps is None:
+                continue
             if msgSplit[0] == "GET":  # multi_request
                 for request in msgSplit[1:]:
                     responseStruct[request] = self.buildStruct(request)

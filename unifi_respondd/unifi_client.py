@@ -1,15 +1,16 @@
 #!/usr/bin/env python3
 
-from json import load
 from geopy.point import Point
 from pyunifi.controller import Controller
 from typing import List
 from geopy.geocoders import Nominatim
 from unifi_respondd import config
 from requests import get as rget
+from unifi_respondd import logger
 import time
 import dataclasses
 import re
+
 
 ffnodes = None
 
@@ -101,20 +102,24 @@ def scrape(url):
     try:
         return rget(url).json()
     except Exception as ex:
-        print('Error: %s' %(ex))
+        logger.error('Error: %s' %(ex))
 
 def get_infos():
     """This function gathers all the information and returns a list of Accesspoint objects."""
     cfg = config.Config.from_dict(config.load_config())
     ffnodes = scrape(cfg.nodelist)
-    c = Controller(
-        host=cfg.controller_url,
-        username=cfg.username,
-        password=cfg.password,
-        port=cfg.controller_port,
-        version=cfg.version,
-        ssl_verify=cfg.ssl_verify,
-    )
+    try:
+        c = Controller(
+            host=cfg.controller_url,
+            username=cfg.username,
+            password=cfg.password,
+            port=cfg.controller_port,
+            version=cfg.version,
+            ssl_verify=cfg.ssl_verify,
+        )
+    except Exception as ex:
+        logger.error('Error: %s' %(ex))
+        return
     geolookup = Nominatim(user_agent="ffmuc_respondd")
     aps = Accesspoints(accesspoints=[])
     for site in c.get_sites():
