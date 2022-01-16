@@ -1,14 +1,13 @@
 import os
 from setuptools import setup
 
-
 def read(fname):
     return open(os.path.join(os.path.dirname(__file__), fname)).read()
 
 
 setup(
     name="unifi_respondd",
-    version="0.0.5",
+    version=##VERSION##,
     author="Annika Wickert",
     author_email="aw@awlnx.space",
     description=("A tool to display Unifi APs on Freifunk maps."),
