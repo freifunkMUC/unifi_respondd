@@ -19,4 +19,5 @@ setup(
     long_description=read("README.md"),
     long_description_content_type="text/markdown",
     include_package_data=True,
+    install_requires=["pyunifi", "geopy", "pyyaml", "dataclasses_json"],
 )
