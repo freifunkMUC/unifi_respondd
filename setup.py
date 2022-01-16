@@ -15,5 +15,6 @@ setup(
     url = "http://packages.python.org/unifi_respondd",
     packages=['unifi_respondd'],
     long_description=read('README.md'),
+    long_description_content_type='text/markdown',
     include_package_data=True,
 )
