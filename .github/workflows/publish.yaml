@@ -11,7 +11,7 @@ jobs:
         uses: actions/setup-python@v1
         with:
           python-version: 3.9
-      - name:
+      - name: Get version from git tag
         run: sed -i s/VERSION/$(git describe --tags 2>/dev/null)/g setup.py
       - name: Install pypa/build
         run: >-
