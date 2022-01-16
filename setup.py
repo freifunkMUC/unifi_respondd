@@ -8,7 +8,7 @@ def read(fname):
 
 setup(
     name="unifi_respondd",
-    version=v0.0.5-6-ga3eaf49,
+    version="VERSION",
     author="Annika Wickert",
     author_email="aw@awlnx.space",
     description=("A tool to display Unifi APs on Freifunk maps."),
