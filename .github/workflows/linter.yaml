@@ -1,0 +1,20 @@
+name: Lint
+
+on: [push, pull_request]
+
+jobs:
+  run_black:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions/setup-python@v2
+      - uses: psf/black@stable
+  pylint:
+    name: GitHub Action for pylint
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@master
+    - name: GitHub Action for pylint
+      uses: cclauss/GitHub-Action-for-pylint@master
+      with:
+        args: pylint **/*.py
