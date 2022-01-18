@@ -59,7 +59,7 @@ class Accesspoint:
     gateway: str
     gateway6: str
     gateway_nexthop: str
-    neighbour_mac: str
+    neighbour_macs: List[str]
     domain_code: str
 
 
@@ -163,6 +163,7 @@ def get_infos():
                         client_count5,
                     ) = get_client_count_for_ap(ap.get("mac", None), clients, cfg)
                     lat, lon = 0, 0
+                    neighbour_macs = []
                     if ap.get("snmp_location", None) is not None:
                         try:
                             lat, lon = get_location_by_address(
@@ -171,7 +172,7 @@ def get_infos():
                         except:
                             pass
                     try:
-                        neighbour_mac = cfg.offloader_mac.get(site["desc"], None)
+                        neighbour_macs.append(cfg.offloader_mac.get(site["desc"], None))
                         offloader_id = cfg.offloader_mac.get(site["desc"], "").replace(
                             ":", ""
                         )
@@ -183,13 +184,17 @@ def get_infos():
                             )
                         )[0]
                     except:
-                        neighbour_mac = None
                         offloader_id = None
                         offloader = {}
                         pass
                     uplink = ap.get("uplink", None)
                     if uplink is not None and uplink.get("ap_mac", None) is not None:
-                        neighbour_mac = uplink.get("ap_mac")
+                        neighbour_macs.append(uplink.get("ap_mac"))
+                    lldp_table = ap.get("lldp_table", None)
+                    if lldp_table is not None:
+                        for lldp_entry in lldp_table:
+                            if not lldp_entry.get("is_wired", True):
+                                neighbour_macs.append(lldp_entry.get("chassis_id"))
                     aps.accesspoints.append(
                         Accesspoint(
                             name=ap.get("name", None),
@@ -215,7 +220,7 @@ def get_infos():
                             gateway=offloader.get("gateway", None),
                             gateway6=offloader.get("gateway6", None),
                             gateway_nexthop=offloader_id,
-                            neighbour_mac=neighbour_mac,
+                            neighbour_macs=neighbour_macs,
                             domain_code=offloader.get(
                                 "domain", "ffmuc_unifi_respondd_fallback"
                             ),
