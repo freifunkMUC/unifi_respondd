@@ -305,22 +305,16 @@ class ResponddClient:
         aps = self._aps
         neighbours = []
         for ap in aps.accesspoints:
+            nbs = {}
             for neighbour_mac in ap.neighbour_macs:
                 if neighbour_mac is not None:
-                    neighbours.append(
-                        NeighboursInfo(
-                            node_id=ap.mac.replace(":", ""),
-                            batadv={
-                                ap.mac: Neighbours(
-                                    neighbours={
-                                        neighbour_mac: NeighbourDetails(
-                                            tq=255, lastseen=0.45
-                                        )
-                                    }
-                                )
-                            },
-                        )
-                    )
+                    nbs[neighbour_mac] = NeighbourDetails(tq=255, lastseen=0.45)
+            neighbours.append(
+                NeighboursInfo(
+                    node_id=ap.mac.replace(":", ""),
+                    batadv={ap.mac: Neighbours(neighbours=nbs)},
+                )
+            )
         return neighbours
 
     def listenMulticast(self):
