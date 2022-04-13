@@ -112,100 +112,124 @@ def get_infos():
     cfg = config.Config.from_dict(config.load_config())
     #ffnodes = scrape(cfg.nodelist)
     try:
-        omada = Omada(baseurl=cfg.controller_url, site=cfg.controller_site,verify=cfg.ssl_verify,verbose=True)
-        omada.login(username=cfg.username,password=cfg.password)
-        omada.getSites()
-        omada.getApiInfo()
-        omada.getSiteSettings()
+        cb = Omada(
+                baseurl=cfg.controller_url, 
+                site=cfg.controller_site,
+                verify=cfg.ssl_verify,
+                verbose=True
+            )
+        cb.login(
+                username=cfg.username,
+                password=cfg.password
+            )
     except Exception as ex:
         logger.error("Error: %s" % (ex))
         return
     geolookup = Nominatim(user_agent="ffmuc_respondd")
     aps = Accesspoints(accesspoints=[])
-    for site in c.get_sites():
-        if cfg.version == "UDMP-unifiOS":
-            c = Controller(
-                host=cfg.controller_url,
-                username=cfg.username,
-                password=cfg.password,
-                port=cfg.controller_port,
-                version=cfg.version,
-                site_id=site["name"],
-                ssl_verify=cfg.ssl_verify,
-            )
-        else:
-            c.switch_site(site["desc"])
-        aps_for_site = c.get_aps()
-        clients = c.get_clients()
+
+    #for site in cb.getSites():
+    for site in "t0biii","":
+        csite = Omada(
+            baseurl=cfg.controller_url,
+            #site=site["name"],
+            site=site,
+            verify=cfg.ssl_verify,
+            verbose=True
+        )
+        csite.login(
+            username=cfg.username,
+            password=cfg.password,
+        )
+        siteSettings = csite.getSiteSettings()
+        autoupgrade = siteSettings["autoUpgrade"]["enable"]
+        
+        aps_for_site = csite.getSiteDevices()
+        print(aps_for_site)
+        clients = csite.getSiteClients()
+        print(clients)
         for ap in aps_for_site:
             if (
                 ap.get("name", None) is not None
-                and ap.get("state", 0) != 0
-                and ap.get("type", "na") == "uap"
+                #and ap.get("status", 0) != 0
+                and ap.get("type") == "ap"
             ):
-                ssids = ap.get("vap_table", None)
-                containsSSID = False
+                moreAPInfos = csite.getSiteAP(mac=ap["mac"]) 
+                
+                #ssids = ap.get("vap_table", None)
+                
+                #containsSSID = False
                 tx = 0
                 rx = 0
-                if ssids is not None:
-                    for ssid in ssids:
-                        if re.search(cfg.ssid_regex, ssid.get("essid", "")):
-                            containsSSID = True
-                            tx = tx + ssid.get("tx_bytes", 0)
-                            rx = rx + ssid.get("rx_bytes", 0)
-                if containsSSID:
-                    (
-                        client_count,
-                        client_count24,
-                        client_count5,
-                    ) = get_client_count_for_ap(ap.get("mac", None), clients, cfg)
-                    lat, lon = 0, 0
-                    neighbour_macs = []
-                    if ap.get("snmp_location", None) is not None:
-                        try:
-                            lat, lon = get_location_by_address(
-                                ap["snmp_location"], geolookup
-                            )
-                        except:
-                            pass
-                    try:
-                        neighbour_macs.append(cfg.offloader_mac.get(site["desc"], None))
-                        offloader_id = cfg.offloader_mac.get(site["desc"], "").replace(
-                            ":", ""
+                #if ssids is not None:
+                    #for ssid in ssids:
+                        #if re.search(cfg.ssid_regex, ssid.get("essid", "")):
+                            #containsSSID = True
+                            #tx = tx + ssid.get("tx_bytes", 0)
+                            #rx = rx + ssid.get("rx_bytes", 0)
+                #if containsSSID:
+                    #(
+                        #client_count,
+                        #client_count24,
+                        #client_count5,
+                    #) = get_client_count_for_ap(ap.get("mac", None), clients, cfg)
+                neighbour_macs = []
+
+                ###
+                try:
+                    neighbour_macs.append(cfg.offloader_mac.get(site["desc"], None))
+                    offloader_id = cfg.offloader_mac.get(site["desc"], "").replace(
+                        ":", ""
+                    )
+                    offloader = list(
+                        filter(
+                            lambda x: x["mac"]
+                            == cfg.offloader_mac.get(site["desc"], ""),
+                            ffnodes["nodes"],
                         )
-                        offloader = list(
-                            filter(
-                                lambda x: x["mac"]
-                                == cfg.offloader_mac.get(site["desc"], ""),
-                                ffnodes["nodes"],
-                            )
-                        )[0]
+                    )[0]
+                except:
+                    offloader_id = None
+                    offloader = {}
+                    pass
+
+                uplink = ap.get("uplink", None)
+                if uplink is not None and uplink.get("ap_mac", None) is not None:
+                    neighbour_macs.append(uplink.get("ap_mac"))
+                lldp_table = ap.get("lldp_table", None)
+                if lldp_table is not None:
+                    for lldp_entry in lldp_table:
+                        if not lldp_entry.get("is_wired", True):
+                            neighbour_macs.append(lldp_entry.get("chassis_id"))
+
+                ###
+
+
+
+                lat, lon = 0, 0
+                snmp = moreAPInfos.get("snmp", None)
+                if snmp.get("location", None) is not None:
+                    try:
+                        lat, lon = get_location_by_address(
+                            snmp["location"], geolookup
+                        )
                     except:
-                        offloader_id = None
-                        offloader = {}
                         pass
-                    uplink = ap.get("uplink", None)
-                    if uplink is not None and uplink.get("ap_mac", None) is not None:
-                        neighbour_macs.append(uplink.get("ap_mac"))
-                    lldp_table = ap.get("lldp_table", None)
-                    if lldp_table is not None:
-                        for lldp_entry in lldp_table:
-                            if not lldp_entry.get("is_wired", True):
-                                neighbour_macs.append(lldp_entry.get("chassis_id"))
+
                     aps.accesspoints.append(
                         Accesspoint(
                             name=ap.get("name", None),
                             mac=ap.get("mac", None),
-                            snmp_location=ap.get("snmp_location", None),
-                            client_count=client_count,
-                            client_count24=client_count24,
-                            client_count5=client_count5,
+                            snmp_location=snmp("location", None),
+                            client_count=ap.get("clientNum"),
+                            client_count24=ap.get("clientNum2g"),
+                            client_count5=ap.get("clientNum5g"),
                             latitude=float(lat),
                             longitude=float(lon),
                             model=ap.get("model", None),
                             firmware=ap.get("version", None),
-                            uptime=ap.get("uptime", None),
-                            contact=ap.get("snmp_contact", None),
+                            uptime=moreAPInfos.get("uptime", None),
+                            contact=snmp("contact", None),
                             load_avg=float(
                                 ap.get("sys_stats", {}).get("loadavg_1", 0.0)
                             ),
