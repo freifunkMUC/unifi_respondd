@@ -110,7 +110,7 @@ def scrape(url):
 def get_infos():
     """This function gathers all the information and returns a list of Accesspoint objects."""
     cfg = config.Config.from_dict(config.load_config())
-    #ffnodes = scrape(cfg.nodelist)
+    ffnodes = scrape(cfg.nodelist)
     try:
         cb = Omada(
                 baseurl=cfg.controller_url, 
