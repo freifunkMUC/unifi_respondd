@@ -175,7 +175,7 @@ def get_infos():
                     #) = get_client_count_for_ap(ap.get("mac", None), clients, cfg)
                 neighbour_macs = []
 
-                ###
+                ### need work
                 try:
                     neighbour_macs.append(cfg.offloader_mac.get(site["desc"], None))
                     offloader_id = cfg.offloader_mac.get(site["desc"], "").replace(
@@ -202,7 +202,7 @@ def get_infos():
                         if not lldp_entry.get("is_wired", True):
                             neighbour_macs.append(lldp_entry.get("chassis_id"))
 
-                ###
+                ### need work
 
 
 
