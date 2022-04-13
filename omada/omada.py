@@ -358,6 +358,15 @@ class Omada:
 		return self.get( f'/sites/{site}/devices' )
 
 	##
+	## Get the Details of an AP
+	##
+	def getSiteAP(self, site=None, mac=None):
+		
+		site = self.site_key( site )
+		
+		return self.get( f'/sites/{site}/eaps/{mac}' )
+
+	##
 	## Returns the list of active clients for given site.
 	##
 	def getSiteClients(self, site=None):
