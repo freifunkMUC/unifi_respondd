@@ -132,7 +132,7 @@ def get_infos():
     for site in "t0biii","":
         csite = Omada(
             baseurl=cfg.controller_url,
-            #site=site["name"],
+            #site=site["data"]["name"],
             site=site,
             verify=cfg.ssl_verify,
             verbose=True
@@ -220,7 +220,7 @@ def get_infos():
                         Accesspoint(
                             name=ap.get("name", None),
                             mac=ap.get("mac", None),
-                            snmp_location=snmp("location", None),
+                            snmp_location=snmp.get("location", None),
                             client_count=ap.get("clientNum"),
                             client_count24=ap.get("clientNum2g"),
                             client_count5=ap.get("clientNum5g"),
@@ -229,7 +229,7 @@ def get_infos():
                             model=ap.get("model", None),
                             firmware=ap.get("version", None),
                             uptime=moreAPInfos.get("uptime", None),
-                            contact=snmp("contact", None),
+                            contact=snmp.get("contact", None),
                             load_avg=float(
                                 ap.get("sys_stats", {}).get("loadavg_1", 0.0)
                             ),
