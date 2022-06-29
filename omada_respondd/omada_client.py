@@ -114,9 +114,8 @@ def get_infos():
     try:
         cb = Omada(
                 baseurl=cfg.controller_url, 
-                site=cfg.controller_site,
                 verify=cfg.ssl_verify,
-                verbose=True
+                verbose=False
             )
         cb.login(
                 username=cfg.username,
@@ -127,15 +126,12 @@ def get_infos():
         return
     geolookup = Nominatim(user_agent="ffmuc_respondd")
     aps = Accesspoints(accesspoints=[])
-
-    #for site in cb.getSites():
-    for site in "t0biii","":
+    for site in cb.getCurrentUser()['privilege']['sites']:
         csite = Omada(
             baseurl=cfg.controller_url,
-            #site=site["data"]["name"],
-            site=site,
+            site=site["name"],
             verify=cfg.ssl_verify,
-            verbose=True
+            verbose=False
         )
         csite.login(
             username=cfg.username,
@@ -145,16 +141,15 @@ def get_infos():
         autoupgrade = siteSettings["autoUpgrade"]["enable"]
         
         aps_for_site = csite.getSiteDevices()
-        print(aps_for_site)
+        
         clients = csite.getSiteClients()
-        print(clients)
         for ap in aps_for_site:
             if (
                 ap.get("name", None) is not None
-                #and ap.get("status", 0) != 0
+                and ap.get("status", 0) != 0
                 and ap.get("type") == "ap"
             ):
-                moreAPInfos = csite.getSiteAP(mac=ap["mac"]) 
+                print(str(ap) + "  " + site['name'])
                 
                 #ssids = ap.get("vap_table", None)
                 

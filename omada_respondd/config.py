@@ -30,7 +30,6 @@ class Config:
 
     controller_url: str
     controller_port: int
-    controller_site: str
     username: str
     password: str
     ssid_regex: str
@@ -60,7 +59,6 @@ class Config:
         return cls(
             controller_url=cfg["controller_url"],
             controller_port=cfg["controller_port"],
-            controller_site=cfg["controller_site"],
             username=cfg["username"],
             password=cfg["password"],
             ssid_regex=cfg["ssid_regex"],

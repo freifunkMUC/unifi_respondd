@@ -188,7 +188,7 @@ class Omada:
 	def get_paged(self, path, params={}, data=None, json=None):
 		
 		params['_'] = timestamp()
-		params['token'] = self.token
+		#params['token'] = self.token
 		
 		if 'currentPage' not in params:
 			params['currentPage'] = 1
@@ -213,7 +213,7 @@ class Omada:
 	def post(self, path, params={}, data=None, json=None):
 		
 		params['_'] = timestamp()
-		params['token'] = self.token
+		#params['token'] = self.token
 		
 		response = self.session.post( self.url_for(path), params=params, data=data, json=json )
 		response.raise_for_status()
@@ -356,15 +356,6 @@ class Omada:
 		site = self.site_key( site )
 		
 		return self.get( f'/sites/{site}/devices' )
-
-	##
-	## Get the Details of an AP
-	##
-	def getSiteAP(self, site=None, mac=None):
-		
-		site = self.site_key( site )
-		
-		return self.get( f'/sites/{site}/eaps/{mac}' )
 
 	##
 	## Returns the list of active clients for given site.
