@@ -250,7 +250,7 @@ class ResponddClient:
             nodes.append(
                 NodeInfo(
                     software=SoftwareInfo(
-                        firmware=FirmwareInfo(base="UniFi", release=ap.firmware)
+                        firmware=FirmwareInfo(base="Omada", release=ap.firmware)
                     ),
                     hostname=ap.name,
                     node_id=ap.mac.replace(":", ""),
@@ -334,17 +334,17 @@ class ResponddClient:
 
     def start(self):
         """This method starts the respondd client."""
-      #  self._sock.setsockopt(
-      #      socket.SOL_SOCKET,
-      #      socket.SO_BINDTODEVICE,
-      #      bytes(self._config.interface.encode()),
-      #  )
-      #  if self._config.multicast_enabled:
-      #      self._sock.bind(("::", self._config.multicast_port))
+        #self._sock.setsockopt(
+            #socket.SOL_SOCKET,
+            #socket.SO_BINDTODEVICe,
+            #bytes(self._config.interface.encode()),
+        #)
+        #if self._config.multicast_enabled:
+            #self._sock.bind(("::", self._config.multicast_port))
 
-      #      self.joinMCAST(
-      #          self._sock, self._config.multicast_address, self._config.interface
-      #      )
+            #self.joinMCAST(
+                #self._sock, self._config.multicast_address, self._config.interface
+            #)
 
         while True:
             responseStruct = {}
@@ -355,18 +355,18 @@ class ResponddClient:
         #        msgSplit, sourceAddress = self.listenMulticast()
         #    else:
         #        self.sendUnicast()
-        #    self._timeStart = time.time()
+            self._timeStart = time.time()
             self._aps = omada_client.get_infos()
-         #   if self._aps is None:
-         #       continue
-         #   if msgSplit[0] == "GET":  # multi_request
-         #       for request in msgSplit[1:]:
-         #           responseStruct[request] = self.buildStruct(request)
-         #       self.sendStruct(sourceAddress, responseStruct, True)
-         #   else:  # single_request
-         #       responseStruct = self.buildStruct(msgSplit[0])
-         #       self.sendStruct(sourceAddress, responseStruct, False)
-        #    self._timeStop = time.time()
+            if self._aps is None:
+                continue
+            if msgSplit[0] == "GET":  # multi_request
+                for request in msgSplit[1:]:
+                    responseStruct[request] = self.buildStruct(request)
+                self.sendStruct(sourceAddress, responseStruct, True)
+            else:  # single_request
+                responseStruct = self.buildStruct(msgSplit[0])
+                self.sendStruct(sourceAddress, responseStruct, False)
+            self._timeStop = time.time()
 
     def merge_node(self, responseStruct):
         """This method merges the node information of all APs to their corresponding node_id."""
