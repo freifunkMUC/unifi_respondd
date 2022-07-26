@@ -7,9 +7,9 @@ from omada_respondd.respondd_client import ResponddClient as ResponddClient2
 
 
 def main():
-    #cfg = config.Config.from_dict(config.load_config())
-    #extResponddClient = ResponddClient(cfg)
-    #extResponddClient.start()
+    # cfg = config.Config.from_dict(config.load_config())
+    # extResponddClient = ResponddClient(cfg)
+    # extResponddClient.start()
 
     cfg2 = config2.Config.from_dict(config2.load_config())
     extResponddClient2 = ResponddClient2(cfg2)
