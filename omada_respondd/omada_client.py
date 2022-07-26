@@ -145,7 +145,7 @@ def get_infos():
         for ap in aps_for_site:
             if (
                 ap.get("name", None) is not None
-                and  (ap.get("status", 0) != 20 and ap.get("status", 0) != 20)
+                and  (ap.get("status", 0) != 0 and ap.get("status", 0) != 20)
                 and ap.get("type") == "ap"
             ):
                 moreAPInfos = csite.getSiteAP(mac=ap["mac"])
