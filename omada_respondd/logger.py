@@ -8,7 +8,7 @@ from logging import debug as debug
 from logging import config
 import yaml
 import os.path
-from unifi_respondd.config import UNIFI_RESPONDD_CONFIG_DEFAULT_LOCATION
+from omada_respondd.config import OMADA_RESPONDD_CONFIG_DEFAULT_LOCATION
 
 _LOGGING_DEFAULT_CONFIG = {
     "version": 1,
@@ -37,8 +37,8 @@ def fetch_logging_configuration():
         Logging configuration.
     """
     logging_cfg = dict()
-    if os.path.isfile(UNIFI_RESPONDD_CONFIG_DEFAULT_LOCATION):
-        with open(UNIFI_RESPONDD_CONFIG_DEFAULT_LOCATION) as cfg_file:
+    if os.path.isfile(OMADA_RESPONDD_CONFIG_DEFAULT_LOCATION):
+        with open(OMADA_RESPONDD_CONFIG_DEFAULT_LOCATION) as cfg_file:
             logging_cfg = yaml.load(cfg_file, Loader=yaml.FullLoader)
     if logging_cfg.get("logging_config"):
         return logging_cfg.get("logging_config")
