@@ -334,27 +334,27 @@ class ResponddClient:
 
     def start(self):
         """This method starts the respondd client."""
-        #self._sock.setsockopt(
-            #socket.SOL_SOCKET,
-            #socket.SO_BINDTODEVICe,
-            #bytes(self._config.interface.encode()),
-        #)
-        #if self._config.multicast_enabled:
-            #self._sock.bind(("::", self._config.multicast_port))
+        self._sock.setsockopt(
+            socket.SOL_SOCKET,
+            socket.SO_BINDTODEVICE,
+            bytes(self._config.interface.encode()),
+        )
+        if self._config.multicast_enabled:
+            self._sock.bind(("::", self._config.multicast_port))
 
-            #self.joinMCAST(
-                #self._sock, self._config.multicast_address, self._config.interface
-            #)
+            self.joinMCAST(
+                self._sock, self._config.multicast_address, self._config.interface
+            )
 
         while True:
             responseStruct = {}
             sourceAddress = (self._config.unicast_address, self._config.unicast_port)
             msgSplit = ["GET", "nodeinfo", "statistics", "neighbours"]
 
-        #    if self._config.multicast_enabled:
-        #        msgSplit, sourceAddress = self.listenMulticast()
-        #    else:
-        #        self.sendUnicast()
+            if self._config.multicast_enabled:
+                msgSplit, sourceAddress = self.listenMulticast()
+            else:
+                self.sendUnicast()
             self._timeStart = time.time()
             self._aps = omada_client.get_infos()
             if self._aps is None:
