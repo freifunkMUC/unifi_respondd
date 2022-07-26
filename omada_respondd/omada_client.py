@@ -139,7 +139,6 @@ def get_infos():
         )
         siteSettings = csite.getSiteSettings()
         autoupgrade = siteSettings["autoUpgrade"]["enable"]
-        
         aps_for_site = csite.getSiteDevices()
         
         clients = csite.getSiteClients()
@@ -149,6 +148,8 @@ def get_infos():
                 and ap.get("status", 0) != 0
                 and ap.get("type") == "ap"
             ):
+                moreAPInfos = csite.getSiteAP(mac=ap["mac"])
+
                 print(str(ap) + "  " + site['name'])
                 
                 #ssids = ap.get("vap_table", None)
