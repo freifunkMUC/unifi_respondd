@@ -128,3 +128,4 @@ dmypy.json
 # Pyre type checker
 .pyre/
 unifi_respondd.yaml
+omada_respondd.yaml
