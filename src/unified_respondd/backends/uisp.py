@@ -2,10 +2,10 @@ from requests import get as rget
 from typing import List
 import uisp_respondd.config as config
 
+
 import dataclasses
 
 ffnodes = None
-
 cfg = config.Config.from_dict(config.load_config())
 
 
@@ -74,17 +74,20 @@ def get_location(json):
 
 
 def get_apDevice(json):
-    """returns apDevice"""
-    try:
-        print(json["attributes"]["apDevice"]["name"])
-        return json["attributes"]["apDevice"]["name"]
-    except Exception:
-        return ""
+    """returns apDevice """
+    links = scrape(cfg.controller_url + "/data-links", cfg.token)
+    if links:
+        for link in links:
+            if link['from']['device']['identification']['name'] == get_hostname(json):
+                try:
+                    return link['to']['device']['identification']['name']
+                except Exception:
+                    return ""
 
 
 def get_infos():
     aps = Accesspoints(accesspoints=[])
-    devices = scrape(cfg.controller_url, cfg.token)
+    devices = scrape(cfg.controller_url + "/devices", cfg.token)
     if devices:
         for device in devices:
             if "Router" not in get_hostname(device):
