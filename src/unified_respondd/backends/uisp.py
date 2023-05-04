@@ -74,13 +74,13 @@ def get_location(json):
 
 
 def get_apDevice(json):
-    """returns apDevice """
+    """returns apDevice"""
     links = scrape(cfg.controller_url + "/data-links", cfg.token)
     if links:
         for link in links:
-            if link['from']['device']['identification']['name'] == get_hostname(json):
+            if link["from"]["device"]["identification"]["name"] == get_hostname(json):
                 try:
-                    return link['to']['device']['identification']['name']
+                    return link["to"]["device"]["identification"]["name"]
                 except Exception:
                     return ""
 
