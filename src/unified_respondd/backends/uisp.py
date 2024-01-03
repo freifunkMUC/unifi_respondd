@@ -28,6 +28,7 @@ class Accesspoint:
     latitude: float
     longitude: float
     neighbour: str
+    domain_code: str
 
 
 @dataclasses.dataclass
@@ -98,6 +99,7 @@ def get_infos():
                         latitude=float(get_location(device)[0]),
                         longitude=float(get_location(device)[1]),
                         neighbour=get_apDevice(device),
+                        domain_code="uisp_respondd_fallback",
                     )
                 )
     return aps
