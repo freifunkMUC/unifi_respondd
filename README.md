@@ -40,4 +40,5 @@ logging_config:
       - console
       level: DEBUG
     version: 1
+fallback_domain: "unifi_respondd_fallback"  # optional
 ```
