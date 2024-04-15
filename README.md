@@ -4,8 +4,16 @@ This queries the API of a UniFi controller to get the current status of the Acce
 
 ## Overview
 
-![](docs/architecture.png)
-
+```mermaid
+graph TD;
+	A{"*respondd_main*"} -->| | B("*unifi_client*")
+    A -->| | C("*respondd_client*")
+	B -->|"RestFul API"| D("unifi_controller")
+    C -->|"Subscribe"| E("multicast")
+    C -->|"Send per interval / On multicast request"| F("unicast")
+    G{"yanic"} -->|"Request metrics"| E
+    F -->|"Receive"| G
+```
 
 ## Config File:
 ```yaml
