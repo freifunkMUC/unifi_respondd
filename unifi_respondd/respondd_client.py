@@ -125,23 +125,25 @@ class ClientInfo:
     wifi24: int
     wifi5: int
 
+
 @dataclasses.dataclass
 class WirelessInfo:
     """This class contains the Wireless information of an AP.
     Attributes:
         frequency:
-        noise: 
-        active: 
-        busy: 
+        noise:
+        active:
+        busy:
         rx:
         tx:"""
-    
+
     frequency: int
-    #noise: int
-    #active: int
-    #busy: int
+    # noise: int
+    # active: int
+    # busy: int
     rx: int
     tx: int
+
 
 @dataclasses.dataclass
 class MemoryInfo:
@@ -291,7 +293,7 @@ class ResponddClient:
         return nodes
 
     @staticmethod
-    def frequency_from_channel(channel): 
+    def frequency_from_channel(channel):
         if channel >= 36:
             return 5000 + (channel - 36) * 5
         else:
@@ -305,7 +307,7 @@ class ResponddClient:
         aps = self._aps
         statistics = []
         for ap in aps.accesspoints:
-            wirelessinfos = [] 
+            wirelessinfos = []
             frequency5 = self.frequency_from_channel(ap.channel5)
             wirelessinfos.append(
                 WirelessInfo(
@@ -346,7 +348,7 @@ class ResponddClient:
                     gateway=ap.gateway,
                     gateway6=ap.gateway6,
                     gateway_nexthop=ap.gateway_nexthop,
-                    wireless=wirelessinfos
+                    wireless=wirelessinfos,
                 )
             )
         return statistics

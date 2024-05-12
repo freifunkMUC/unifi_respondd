@@ -91,6 +91,7 @@ def get_client_count_for_ap(ap_mac, clients, cfg):
                     client24_count += 1
     return client24_count + client5_count, client24_count, client5_count
 
+
 def get_ap_channel_usage(ssids, cfg):
     """This function returns the channels used for the Freifunk SSIDs"""
     for ssid in ssids:
@@ -108,6 +109,7 @@ def get_ap_channel_usage(ssids, cfg):
                 tx_bytes24 = tx_bytes
 
     return channel5, rx_bytes5, tx_bytes5, channel24, rx_bytes24, tx_bytes24
+
 
 def get_location_by_address(address, app):
     """This function returns latitude and longitude of a given address."""
@@ -185,7 +187,7 @@ def get_infos():
                         client_count24,
                         client_count5,
                     ) = get_client_count_for_ap(ap.get("mac", None), clients, cfg)
-                    
+
                     (
                         channel5,
                         rx_bytes5,
@@ -194,7 +196,7 @@ def get_infos():
                         rx_bytes24,
                         tx_bytes24,
                     ) = get_ap_channel_usage(ssids, cfg)
-                                             
+
                     lat, lon = 0, 0
                     neighbour_macs = []
                     if ap.get("snmp_location", None) is not None:
