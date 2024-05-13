@@ -308,22 +308,26 @@ class ResponddClient:
         statistics = []
         for ap in aps.accesspoints:
             wirelessinfos = []
-            frequency5 = self.frequency_from_channel(ap.channel5)
-            wirelessinfos.append(
-                WirelessInfo(
-                    frequency=frequency5,
-                    rx=ap.rx_bytes5,
-                    tx=ap.tx_bytes5,
+
+            if ap.channel5:
+                frequency5 = self.frequency_from_channel(ap.channel5)
+                wirelessinfos.append(
+                    WirelessInfo(
+                        frequency=frequency5,
+                        rx=ap.rx_bytes5,
+                        tx=ap.tx_bytes5,
+                    )
                 )
-            )
-            frequency24 = self.frequency_from_channel(ap.channel24)
-            wirelessinfos.append(
-                WirelessInfo(
-                    frequency=frequency24,
-                    rx=ap.rx_bytes5,
-                    tx=ap.tx_bytes5,
+
+            if ap.channel24:    
+                frequency24 = self.frequency_from_channel(ap.channel24)
+                wirelessinfos.append(
+                    WirelessInfo(
+                        frequency=frequency24,
+                        rx=ap.rx_bytes5,
+                        tx=ap.tx_bytes5,
+                    )
                 )
-            )
 
             statistics.append(
                 StatisticsInfo(
