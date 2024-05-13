@@ -66,7 +66,6 @@ class Accesspoint:
     frequency5: int
 
 
-
 @dataclasses.dataclass
 class Accesspoints:
     """This class contains the information of all APs.
@@ -112,9 +111,9 @@ def scrape(url):
 
 
 def get_ap_frequency(channelData):
-    parts = channelData.split('/')
+    parts = channelData.split("/")
     # Der zweite Teil enthält die MHz-Zahl
-    return int(parts[1].replace('MHz', '').strip())
+    return int(parts[1].replace("MHz", "").strip())
 
 
 def get_infos():
@@ -148,7 +147,9 @@ def get_infos():
         for ap in aps_for_site:
             if (
                 ap.get("name", None) is not None
-                and (ap.get("status", 0) != 0 and ap.get("status", 0) != 20) ##Offline Check
+                and (
+                    ap.get("status", 0) != 0 and ap.get("status", 0) != 20
+                )  ##Offline Check
                 and ap.get("type") == "ap"
             ):
                 moreAPInfos = csite.getSiteAP(mac=ap["mac"])
@@ -156,10 +157,10 @@ def get_infos():
                 # ssids = ap.get("vap_table", None)
 
                 # containsSSID = False
-                
+
                 tx = 0
-                rx = 0 
-                
+                rx = 0
+
                 radioTraffic2g = moreAPInfos.get("radioTraffic2g", None)
                 if radioTraffic2g is not None:
                     tx = tx + radioTraffic2g.get("tx", 0)
@@ -170,9 +171,9 @@ def get_infos():
                     tx = tx + radioTraffic5g.get("tx", 0)
                     rx = rx + radioTraffic5g.get("rx", 0)
 
-                client_count=ap.get("clientNum"),
-                client_count24=ap.get("clientNum2g"),
-                client_count5=ap.get("clientNum5g"),
+                client_count = (ap.get("clientNum"),)
+                client_count24 = (ap.get("clientNum2g"),)
+                client_count5 = (ap.get("clientNum5g"),)
                 # if ssids is not None:
                 # for ssid in ssids:
                 # if re.search(cfg.ssid_regex, ssid.get("essid", "")):
@@ -187,9 +188,8 @@ def get_infos():
                 # ) = get_client_count_for_ap(ap.get("mac", None), clients, cfg)
                 neighbour_macs = []
 
-                moreAPInfos.get("cpuUtil") #in Prozent 
-                moreAPInfos.get("memUtil") # in Prozent
-
+                moreAPInfos.get("cpuUtil")  # in Prozent
+                moreAPInfos.get("memUtil")  # in Prozent
 
                 wp2g = moreAPInfos.get("wp2g", None)
                 if wp2g.get("actualChannel", None) is not None:
@@ -198,7 +198,6 @@ def get_infos():
                 wp5g = moreAPInfos.get("wp5g", None)
                 if wp5g.get("actualChannel", None) is not None:
                     frequency5 = get_ap_frequency(wp5g.get("actualChannel"))
-
 
                 try:
                     neighbour_macs.append(cfg.offloader_mac.get(site["name"], None))
@@ -219,21 +218,24 @@ def get_infos():
 
                 uplink = ap.get("uplink", None)
                 if uplink is not None:
-                    neighbour_macs.append(uplink.replace("-",":"))
+                    neighbour_macs.append(uplink.replace("-", ":"))
 
-                #lldp_table = ap.get("lldp_table", None)
-                #if lldp_table is not None:
-                    #for lldp_entry in lldp_table:
-                        #if not lldp_entry.get("is_wired", True):
-                            #neighbour_macs.append(lldp_entry.get("chassis_id"))
+                # lldp_table = ap.get("lldp_table", None)
+                # if lldp_table is not None:
+                # for lldp_entry in lldp_table:
+                # if not lldp_entry.get("is_wired", True):
+                # neighbour_macs.append(lldp_entry.get("chassis_id"))
 
                 # Location
                 lat, lon = 0, 0
                 location = moreAPInfos.get("location", None)
-                if location.get("longitude", None) is not None and location.get("latitude", None) is not None:
+                if (
+                    location.get("longitude", None) is not None
+                    and location.get("latitude", None) is not None
+                ):
                     lon = location["longitude"]
                     lat = location["latitude"]
-                
+
                 snmp = moreAPInfos.get("snmp", None)
                 if snmp.get("location", None) is not None:
                     try:
@@ -244,7 +246,7 @@ def get_infos():
                     aps.accesspoints.append(
                         Accesspoint(
                             name=ap.get("name", None),
-                            mac=ap.get("mac", None).replace("-",":").lower(),
+                            mac=ap.get("mac", None).replace("-", ":").lower(),
                             snmp_location=snmp.get("location", None),
                             client_count=client_count,
                             client_count24=client_count24,
