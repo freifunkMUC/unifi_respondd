@@ -319,7 +319,7 @@ class ResponddClient:
                     )
                 )
 
-            if ap.channel24:    
+            if ap.channel24:
                 frequency24 = self.frequency_from_channel(ap.channel24)
                 wirelessinfos.append(
                     WirelessInfo(
