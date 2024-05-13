@@ -295,12 +295,12 @@ class ResponddClient:
     @staticmethod
     def frequency_from_channel(channel):
         if channel >= 36:
-            return 5000 + (channel - 36) * 5
+            return 5000 + (channel) * 5
         else:
             if channel == 14:
                 return 2484
             elif channel < 14:
-                return 2407 + (channel - 1) * 5
+                return 2407 + (channel) * 5
 
     def getStatistics(self):
         """This method returns the statistics information of all APs."""
