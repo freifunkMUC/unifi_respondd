@@ -94,6 +94,12 @@ def get_client_count_for_ap(ap_mac, clients, cfg):
 
 def get_ap_channel_usage(ssids, cfg):
     """This function returns the channels used for the Freifunk SSIDs"""
+    channel5 = None
+    rx_bytes5 = None
+    tx_bytes5 = None
+    channel24 = None
+    rx_bytes24 = None
+    tx_bytes24 = None
     for ssid in ssids:
         if re.search(cfg.ssid_regex, ssid.get("essid", "")):
             channel = ssid.get("channel", 0)
