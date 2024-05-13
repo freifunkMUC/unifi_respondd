@@ -127,6 +127,25 @@ class ClientInfo:
 
 
 @dataclasses.dataclass
+class WirelessInfo:
+    """This class contains the Wireless information of an AP.
+    Attributes:
+        frequency:
+        noise:
+        active:
+        busy:
+        rx:
+        tx:"""
+
+    frequency: int
+    # noise: int
+    # active: int
+    # busy: int
+    rx: int
+    tx: int
+
+
+@dataclasses.dataclass
 class MemoryInfo:
     """This class contains the memory information of an AP.
     Attributes:
@@ -178,7 +197,11 @@ class StatisticsInfo:
         node_id: The node id of the AP. This is the same as the MAC address (without :).
         loadavg: The load average of the AP.
         memory: The memory information of the AP.
-        traffic: The traffic information of the AP."""
+        traffic: The traffic information of the AP.
+        gateway: The MAC of the IPv4 Gateway
+        gateway6: The MAC of the IPv6 Gateway
+        gateway_nexthop: The MAC of the nexthop Gateway
+        wireless: The WirelessInfos of the AP"""
 
     clients: ClientInfo
     uptime: int
@@ -189,6 +212,7 @@ class StatisticsInfo:
     gateway: str
     gateway6: str
     gateway_nexthop: str
+    wireless: List[WirelessInfo]
 
 
 @dataclasses.dataclass
@@ -268,11 +292,43 @@ class ResponddClient:
             )
         return nodes
 
+    @staticmethod
+    def frequency_from_channel(channel):
+        if channel >= 36:
+            return 5000 + (channel) * 5
+        else:
+            if channel == 14:
+                return 2484
+            elif channel < 14:
+                return 2407 + (channel) * 5
+
     def getStatistics(self):
         """This method returns the statistics information of all APs."""
         aps = self._aps
         statistics = []
         for ap in aps.accesspoints:
+            wirelessinfos = []
+
+            if ap.channel5:
+                frequency5 = self.frequency_from_channel(ap.channel5)
+                wirelessinfos.append(
+                    WirelessInfo(
+                        frequency=frequency5,
+                        rx=ap.rx_bytes5,
+                        tx=ap.tx_bytes5,
+                    )
+                )
+
+            if ap.channel24:
+                frequency24 = self.frequency_from_channel(ap.channel24)
+                wirelessinfos.append(
+                    WirelessInfo(
+                        frequency=frequency24,
+                        rx=ap.rx_bytes5,
+                        tx=ap.tx_bytes5,
+                    )
+                )
+
             statistics.append(
                 StatisticsInfo(
                     clients=ClientInfo(
@@ -296,6 +352,7 @@ class ResponddClient:
                     gateway=ap.gateway,
                     gateway6=ap.gateway6,
                     gateway_nexthop=ap.gateway_nexthop,
+                    wireless=wirelessinfos,
                 )
             )
         return statistics
