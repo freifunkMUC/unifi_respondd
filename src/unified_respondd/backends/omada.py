@@ -171,9 +171,9 @@ def get_infos():
                     tx = tx + radioTraffic5g.get("tx", 0)
                     rx = rx + radioTraffic5g.get("rx", 0)
 
-                client_count = (ap.get("clientNum"),)
-                client_count24 = (ap.get("clientNum2g"),)
-                client_count5 = (ap.get("clientNum5g"),)
+                client_count = ap.get("clientNum")
+                client_count24 = ap.get("clientNum2g")
+                client_count5 = ap.get("clientNum5g")
                 # if ssids is not None:
                 # for ssid in ssids:
                 # if re.search(cfg.ssid_regex, ssid.get("essid", "")):
