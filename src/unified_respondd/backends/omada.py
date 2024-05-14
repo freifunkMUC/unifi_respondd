@@ -61,7 +61,7 @@ class Accesspoint:
     gateway_nexthop: str
     neighbour_macs: List[str]
     domain_code: str
-    autoupdater: bool
+    autoupdater: str
     frequency24: int
     frequency5: int
 
