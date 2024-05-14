@@ -29,6 +29,9 @@ class Accesspoint:
     longitude: float
     neighbour: str
     domain_code: str
+    firmware: str
+    model: str
+    uptime: str
 
 
 @dataclasses.dataclass
@@ -85,6 +88,27 @@ def get_apDevice(json):
                 except Exception:
                     return ""
 
+def get_firmware(json):
+    """returns the firmware version"""
+    try:
+        return json["identification"]["firmwareVersion"]
+    except Exception:
+        return ""
+    
+
+def get_model(json):
+    """returns the model"""
+    try:
+        return json["identification"]["model"]
+    except Exception:
+        return ""
+
+def get_uptime(json):
+    """returns the uptime"""
+    try:
+        return json["overview"]["uptime"]
+    except Exception:
+        return 0
 
 def get_infos():
     aps = Accesspoints(accesspoints=[])
@@ -100,6 +124,9 @@ def get_infos():
                         longitude=float(get_location(device)[1]),
                         neighbour=get_apDevice(device),
                         domain_code="uisp_respondd_fallback",
+                        firmware=get_firmware(device),
+                        model=get_model(device),
+                        uptime=get_uptime(device)
                     )
                 )
     return aps
