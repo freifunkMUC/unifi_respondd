@@ -229,12 +229,13 @@ def get_infos():
                 # Location
                 lat, lon = 0, 0
                 location = moreAPInfos.get("location", None)
-                if (
-                    location.get("longitude", None) is not None
-                    and location.get("latitude", None) is not None
-                ):
-                    lon = location["longitude"]
-                    lat = location["latitude"]
+                if location is not None:
+                    if (
+                        location.get("longitude", None) is not None
+                        and location.get("latitude", None) is not None
+                    ):
+                        lon = location["longitude"]
+                        lat = location["latitude"]
 
                 snmp = moreAPInfos.get("snmp", None)
                 if snmp.get("location", None) is not None:
