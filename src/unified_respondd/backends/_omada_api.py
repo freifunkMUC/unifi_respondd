@@ -478,7 +478,8 @@ class Omada:
     ##
     def getSiteClientsAP(self, site=None, apmac=None):
         return self.__geterator(
-            f"/sites/{self.__findKey(site)}/clients", params={"filters.active": "true", "filters.apMac": apmac}
+            f"/sites/{self.__findKey(site)}/clients",
+            params={"filters.active": "true", "filters.apMac": apmac},
         )
 
     ##
