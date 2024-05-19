@@ -75,7 +75,7 @@ class Accesspoints:
     accesspoints: List[Accesspoint]
 
 
-def get_client_count_for_ap(ap_mac, clients, cfg):
+def get_client_count_for_ap(clients, cfg):
     """This function returns the number total clients, 2,4Ghz clients and 5Ghz clients connected to an AP with Freifunk SSID."""
     client5_count = 0
     client24_count = 0
@@ -86,6 +86,18 @@ def get_client_count_for_ap(ap_mac, clients, cfg):
             else:
                 client24_count += 1
     return client24_count + client5_count, client24_count, client5_count
+
+
+def get_traffic_count_for_ap(clients, cfg):
+    """This function returns the number total clients, 2,4Ghz clients and 5Ghz clients connected to an AP with Freifunk SSID."""
+    tx = 0
+    rx = 0
+    for client in clients:
+        if re.search(cfg.ssid_regex, client.get("ssid", "")):
+            tx += client.get("trafficUp", 0)
+            rx += client.get("trafficDown", 0)
+
+    return tx, rx
 
 
 def get_location_by_address(address, app):
@@ -145,33 +157,38 @@ def get_infos():
         for ap in aps_for_site:
             if (
                 ap.get("name", None) is not None
-                and (
-                    ap.get("status", 0) != 0 and ap.get("status", 0) != 20
-                )
+                and (ap.get("status", 0) != 0 and ap.get("status", 0) != 20)
                 and ap.get("type") == "ap"
             ):
                 ap_mac = ap["mac"]
                 moreAPInfos = csite.getSiteAP(mac=ap_mac)
-                clientsAP = csite.getSiteClientsAP(apmac=ap_mac)
+                # clientsAP = csite.getSiteClientsAP(apmac=ap_mac)
 
                 ssids = moreAPInfos.get("ssidOverrides", None)
                 containsSSID = False
                 if ssids is not None:
                     for ssid in ssids:
                         if re.search(cfg.ssid_regex, ssid.get("ssid", "")):
-                            if(ssid.get("ssidEnabled"), False):
+                            if (ssid.get("ssidEnabled"), False):
                                 containsSSID = True
 
                 if containsSSID is False:
-                    continue # Skip AP if Freifunk SSID is missing
-        
+                    continue  # Skip AP if Freifunk SSID is missing
+
                 (
                     client_count,
                     client_count24,
                     client_count5,
-                ) = get_client_count_for_ap(ap_mac, clientsAP, cfg)
+                ) = get_client_count_for_ap(
+                    clients=csite.getSiteClientsAP(apmac=ap_mac), cfg=cfg
+                )
 
-                #Traffic from entire AP (TODO: Filter Freifunk for ?SSID?)
+                # Traffic from entire AP (TODO: Filter Freifunk for ?SSID?)
+                # (
+                # tx2,
+                # rx2,
+                # ) = get_traffic_count_for_ap(clients=csite.getSiteClientsAP(apmac=ap_mac), cfg=cfg)
+
                 tx = 0
                 rx = 0
                 radioTraffic2g = moreAPInfos.get("radioTraffic2g", None)
@@ -184,8 +201,8 @@ def get_infos():
                     tx = tx + radioTraffic5g.get("tx", 0)
                     rx = rx + radioTraffic5g.get("rx", 0)
 
-                moreAPInfos.get("cpuUtil")  #TODO: cpuUtil in Prozent
-                moreAPInfos.get("memUtil")  #TODO: memUtil in Prozent
+                moreAPInfos.get("cpuUtil")  # TODO: cpuUtil in Prozent
+                moreAPInfos.get("memUtil")  # TODO: memUtil in Prozent
 
                 wp2g = moreAPInfos.get("wp2g", None)
                 if wp2g.get("actualChannel", None) is not None:
