@@ -459,10 +459,9 @@ class Omada:
     def getSiteDevices(self, site=None):
         return self.__get(f"/sites/{self.__findKey(site)}/devices")
 
-        ##
-        ## Get the Details of an AP
-        ##
-
+    ##
+    ## Get the Details of an AP
+    ##
     def getSiteAP(self, site=None, mac=None):
         return self.__get(f"/sites/{self.__findKey(site)}/eaps/{mac}")
 
@@ -472,6 +471,14 @@ class Omada:
     def getSiteClients(self, site=None):
         return self.__geterator(
             f"/sites/{self.__findKey(site)}/clients", params={"filters.active": "true"}
+        )
+
+    ##
+    ## Returns the list of active clients for given site and AP.
+    ##
+    def getSiteClientsAP(self, site=None, apmac=None):
+        return self.__geterator(
+            f"/sites/{self.__findKey(site)}/clients", params={"filters.active": "true", "filters.apMac": apmac}
         )
 
     ##
