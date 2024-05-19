@@ -162,7 +162,6 @@ def get_infos():
             ):
                 ap_mac = ap["mac"]
                 moreAPInfos = csite.getSiteAP(mac=ap_mac)
-                # clientsAP = csite.getSiteClientsAP(apmac=ap_mac)
 
                 ssids = moreAPInfos.get("ssidOverrides", None)
                 containsSSID = False
