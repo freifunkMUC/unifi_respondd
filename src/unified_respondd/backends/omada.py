@@ -285,9 +285,7 @@ def get_infos():
                             gateway6=offloader.get("gateway6", None),
                             gateway_nexthop=offloader_id,
                             neighbour_macs=neighbour_macs,
-                            domain_code=offloader.get(
-                                "domain", "ffmuc_omada_respondd_fallback"
-                            ),
+                            domain_code=offloader.get("domain", cfg.fallback_domain),
                             # autoupdater=autoupgrade,
                         )
                     )
