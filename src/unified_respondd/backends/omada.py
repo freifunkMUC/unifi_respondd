@@ -102,13 +102,14 @@ def get_traffic_count_for_ap(clients, cfg):
 
 def get_location_by_address(address, app):
     """This function returns latitude and longitude of a given address."""
-    time.sleep(1)
     try:
         point = Point().from_string(address)
         return point.latitude, point.longitude
     except:
         try:
-            return app.geocode(address).raw["lat"], app.geocode(address).raw["lon"]
+            time.sleep(1)
+            geocode = app.geocode(address)
+            return geocode.raw["lat"], geocode.raw["lon"]
         except:
             return get_location_by_address(address)
 
@@ -162,7 +163,6 @@ def get_infos():
             ):
                 ap_mac = ap["mac"]
                 moreAPInfos = csite.getSiteAP(mac=ap_mac)
-
                 ssids = moreAPInfos.get("ssidOverrides", None)
                 containsSSID = False
                 if ssids is not None:
@@ -252,10 +252,11 @@ def get_infos():
 
                 snmp = moreAPInfos.get("snmp", None)
                 if snmp.get("location", None) is not None:
-                    try:
-                        lat, lon = get_location_by_address(snmp["location"], geolookup)
-                    except:
-                        pass
+                    if snmp.get("location", None) != "":
+                        try:
+                            lat, lon = get_location_by_address(snmp["location"], geolookup)
+                        except:
+                            pass
 
                     aps.accesspoints.append(
                         Accesspoint(
