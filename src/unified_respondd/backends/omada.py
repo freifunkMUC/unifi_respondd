@@ -272,7 +272,7 @@ def get_infos():
                             frequency5=frequency5,
                             latitude=float(lat),
                             longitude=float(lon),
-                            model=ap.get("model", None),
+                            model=ap.get("showModel", None),
                             firmware=ap.get("version", None),
                             uptime=moreAPInfos.get("uptimeLong", None),
                             contact=snmp.get("contact", None),
