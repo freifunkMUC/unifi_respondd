@@ -88,13 +88,14 @@ def get_apDevice(json):
                 except Exception:
                     return ""
 
+
 def get_firmware(json):
     """returns the firmware version"""
     try:
         return json["identification"]["firmwareVersion"]
     except Exception:
         return ""
-    
+
 
 def get_model(json):
     """returns the model"""
@@ -103,12 +104,14 @@ def get_model(json):
     except Exception:
         return ""
 
+
 def get_uptime(json):
     """returns the uptime"""
     try:
         return json["overview"]["uptime"]
     except Exception:
         return 0
+
 
 def get_infos():
     aps = Accesspoints(accesspoints=[])
@@ -126,7 +129,7 @@ def get_infos():
                         domain_code="uisp_respondd_fallback",
                         firmware=get_firmware(device),
                         model=get_model(device),
-                        uptime=get_uptime(device)
+                        uptime=get_uptime(device),
                     )
                 )
     return aps
