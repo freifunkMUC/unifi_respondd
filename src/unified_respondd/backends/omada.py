@@ -254,7 +254,9 @@ def get_infos():
                 if snmp.get("location", None) is not None:
                     if snmp.get("location", None) != "":
                         try:
-                            lat, lon = get_location_by_address(snmp["location"], geolookup)
+                            lat, lon = get_location_by_address(
+                                snmp["location"], geolookup
+                            )
                         except:
                             pass
 
