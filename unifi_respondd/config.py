@@ -35,6 +35,7 @@ class Config:
     ssid_regex: str
     offloader_mac: Dict[str, str]
     nodelist: str
+    fallback_domain: str
 
     multicast_address: str
     multicast_port: int
@@ -64,6 +65,7 @@ class Config:
             ssid_regex=cfg["ssid_regex"],
             offloader_mac=cfg["offloader_mac"],
             nodelist=cfg["nodelist"],
+            fallback_domain=cfg.get("fallback_domain", "unifi_respondd_fallback"),
             version=cfg["version"],
             ssl_verify=cfg["ssl_verify"],
             multicast_enabled=cfg["multicast_enabled"],
