@@ -119,13 +119,14 @@ def get_ap_channel_usage(ssids, cfg):
 
 def get_location_by_address(address, app):
     """This function returns latitude and longitude of a given address."""
-    time.sleep(1)
     try:
         point = Point().from_string(address)
         return point.latitude, point.longitude
     except:
         try:
-            return app.geocode(address).raw["lat"], app.geocode(address).raw["lon"]
+            time.sleep(1)
+            geocode = app.geocode(address)
+            return geocode.raw["lat"], geocode.raw["lon"]
         except:
             return get_location_by_address(address)
 
