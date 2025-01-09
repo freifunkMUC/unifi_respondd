@@ -80,7 +80,7 @@ def get_client_count_for_ap(clients, cfg):
     client5_count = 0
     client24_count = 0
     for client in clients:
-        if re.search(cfg.ssid_regex, client.get("ssid", "")):
+        if re.search(cfg.ssid_regex, client.get("ssid", ""), re.IGNORECASE):
             if client.get("channel", 0) > 14:
                 client5_count += 1
             else:
@@ -93,7 +93,7 @@ def get_traffic_count_for_ap(clients, cfg):
     tx = 0
     rx = 0
     for client in clients:
-        if re.search(cfg.ssid_regex, client.get("ssid", "")):
+        if re.search(cfg.ssid_regex, client.get("ssid", ""), re.IGNORECASE):
             tx += client.get("trafficUp", 0)
             rx += client.get("trafficDown", 0)
 
@@ -167,7 +167,9 @@ def get_infos():
                 containsSSID = False
                 if ssids is not None:
                     for ssid in ssids:
-                        if re.search(cfg.ssid_regex, ssid.get("ssid", "")):
+                        if re.search(
+                            cfg.ssid_regex, ssid.get("ssid", ""), re.IGNORECASE
+                        ):
                             if (ssid.get("ssidEnabled"), False):
                                 containsSSID = True
 
