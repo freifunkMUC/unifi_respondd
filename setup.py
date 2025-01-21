@@ -21,7 +21,7 @@ setup(
     include_package_data=True,
     install_requires=[
         "pyunifi==2.21",
-        "geopy==2.2.0",
+        "geopy==2.4.1",
         "pyyaml==6.0",
         "dataclasses_json==0.5.6",
     ],
