@@ -169,7 +169,12 @@ def get_infos():
                 ssl_verify=cfg.ssl_verify,
             )
         else:
-            c.switch_site(site["desc"])
+            try:
+                c.switch_site(site["desc"])
+            except Exception as ex:
+                logger.error("Error: %s" % (ex))
+                continue
+
         aps_for_site = c.get_aps()
         clients = c.get_clients()
         for ap in aps_for_site:
