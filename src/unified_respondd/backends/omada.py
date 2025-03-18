@@ -2,7 +2,7 @@
 
 from geopy.point import Point
 from omada import Omada
-from typing import List
+from typing import List, Optional
 from geopy.geocoders import Nominatim
 from omada_respondd import config
 from requests import get as rget
@@ -62,8 +62,8 @@ class Accesspoint:
     neighbour_macs: List[str]
     domain_code: str
     # autoupdater: str
-    frequency24: int
-    frequency5: int
+    frequency24: Optional[int]
+    frequency5: Optional[int]
 
 
 @dataclasses.dataclass
@@ -122,10 +122,18 @@ def scrape(url):
         logger.error("Error: %s" % (ex))
 
 
-def get_ap_frequency(channelData):
+def get_ap_frequency(channelData: str) -> Optional[int]:
+    if channelData == "N/A":
+        return None
     parts = channelData.split("/")
     # Der zweite Teil enthält die MHz-Zahl
-    return int(parts[1].replace("MHz", "").strip())
+    try:
+        return int(parts[1].replace("MHz", "").strip())
+    except Exception as ex:
+        logger.error(
+            "Could not read frequency from channel data (channelData=%s): %s"
+            % (channelData, ex)
+        )
 
 
 def get_infos():
@@ -205,10 +213,12 @@ def get_infos():
                 moreAPInfos.get("cpuUtil")  # TODO: cpuUtil in Prozent
                 moreAPInfos.get("memUtil")  # TODO: memUtil in Prozent
 
+                frequency24 = None
                 wp2g = moreAPInfos.get("wp2g", None)
                 if wp2g.get("actualChannel", None) is not None:
                     frequency24 = get_ap_frequency(wp2g.get("actualChannel"))
 
+                frequency5 = None
                 wp5g = moreAPInfos.get("wp5g", None)
                 if wp5g.get("actualChannel", None) is not None:
                     frequency5 = get_ap_frequency(wp5g.get("actualChannel"))
