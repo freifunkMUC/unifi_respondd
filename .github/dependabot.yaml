@@ -9,11 +9,7 @@ updates:
     directory: "/" # Location of package manifests
     schedule:
       interval: "monthly"
-    reviewers: [freifunkMUC/firmware]
-    assignees: [freifunkMUC/firmware]
   - package-ecosystem: "github-actions"
     directory: /
     schedule:
       interval: "monthly"
-    reviewers: [freifunkMUC/firmware]
-    assignees: [freifunkMUC/firmware]
