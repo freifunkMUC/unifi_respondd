@@ -10,6 +10,7 @@ from unifi_respondd import logger
 import time
 import dataclasses
 import re
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 
 ffnodes = None
@@ -139,10 +140,136 @@ def scrape(url):
         logger.error("Error: %s" % (ex))
 
 
-def get_infos():
+def process_site(site, cfg, ffnodes, geolookup):
     """This function gathers all the information and returns a list of Accesspoint objects."""
+    results = []
+    try:
+        if cfg.version == "UDMP-unifiOS":
+            c = Controller(
+                host=cfg.controller_url,
+                username=cfg.username,
+                password=cfg.password,
+                port=cfg.controller_port,
+                version=cfg.version,
+                site_id=site["name"],
+                ssl_verify=cfg.ssl_verify,
+            )
+        else:
+            c = Controller(
+                host=cfg.controller_url,
+                username=cfg.username,
+                password=cfg.password,
+                port=cfg.controller_port,
+                version=cfg.version,
+                ssl_verify=cfg.ssl_verify,
+            )
+            c.switch_site(site["desc"])
+
+        aps_for_site = c.get_aps()
+        clients = c.get_clients()
+
+        for ap in aps_for_site:
+            if (
+                ap.get("name", None) is not None
+                and ap.get("state", 0) != 0
+                and ap.get("type", "na") == "uap"
+            ):
+                ssids = ap.get("vap_table", None)
+                containsSSID = False
+                tx, rx = 0, 0
+                if ssids is not None:
+                    for ssid in ssids:
+                        if re.search(cfg.ssid_regex, ssid.get("essid", ""), re.IGNORECASE):
+                            containsSSID = True
+                            tx += ssid.get("tx_bytes", 0)
+                            rx += ssid.get("rx_bytes", 0)
+                if not containsSSID:
+                    continue
+
+                client_count, client_count24, client_count5 = get_client_count_for_ap(
+                    ap.get("mac", None), clients, cfg
+                )
+
+                channel5, rx_bytes5, tx_bytes5, channel24, rx_bytes24, tx_bytes24 = (
+                    get_ap_channel_usage(ssids, cfg)
+                )
+
+                lat, lon = 0, 0
+                neighbour_macs = []
+                if ap.get("snmp_location", None) is not None:
+                    try:
+                        lat, lon = get_location_by_address(
+                            ap["snmp_location"], geolookup
+                        )
+                    except:
+                        pass
+
+                try:
+                    neighbour_macs.append(cfg.offloader_mac.get(site["desc"], None))
+                    offloader_id = cfg.offloader_mac.get(site["desc"], "").replace(
+                        ":", ""
+                    )
+                    offloader = list(
+                        filter(
+                            lambda x: x["mac"]
+                            == cfg.offloader_mac.get(site["desc"], ""),
+                            ffnodes["nodes"],
+                        )
+                    )[0]
+                except:
+                    offloader_id = None
+                    offloader = {}
+
+                uplink = ap.get("uplink", None)
+                if uplink is not None and uplink.get("ap_mac", None) is not None:
+                    neighbour_macs.append(uplink.get("ap_mac"))
+                for lldp_entry in ap.get("lldp_table", []):
+                    if not lldp_entry.get("is_wired", True):
+                        neighbour_macs.append(lldp_entry.get("chassis_id"))
+
+                results.append(
+                    Accesspoint(
+                        name=ap.get("name", None),
+                        mac=ap.get("mac", None),
+                        snmp_location=ap.get("snmp_location", None),
+                        client_count=client_count,
+                        client_count24=client_count24,
+                        client_count5=client_count5,
+                        channel5=channel5,
+                        rx_bytes5=rx_bytes5,
+                        tx_bytes5=tx_bytes5,
+                        channel24=channel24,
+                        rx_bytes24=rx_bytes24,
+                        tx_bytes24=tx_bytes24,
+                        latitude=float(lat),
+                        longitude=float(lon),
+                        model=ap.get("model", None),
+                        firmware=ap.get("version", None),
+                        uptime=ap.get("uptime", None),
+                        contact=ap.get("snmp_contact", None),
+                        load_avg=float(ap.get("sys_stats", {}).get("loadavg_1", 0.0)),
+                        mem_used=ap.get("sys_stats", {}).get("mem_used", 0),
+                        mem_buffer=ap.get("sys_stats", {}).get("mem_buffer", 0),
+                        mem_total=ap.get("sys_stats", {}).get("mem_total", 0),
+                        tx_bytes=tx,
+                        rx_bytes=rx,
+                        gateway=offloader.get("gateway", None),
+                        gateway6=offloader.get("gateway6", None),
+                        gateway_nexthop=offloader_id,
+                        neighbour_macs=neighbour_macs,
+                        domain_code=offloader.get("domain", cfg.fallback_domain),
+                    )
+                )
+    except Exception as ex:
+        logger.error(f"Error in site {site}: {ex}")
+
+    return results
+
+
+def get_infos():
     cfg = config.Config.from_dict(config.load_config())
     ffnodes = scrape(cfg.nodelist)
+
     try:
         c = Controller(
             host=cfg.controller_url,
@@ -155,130 +282,19 @@ def get_infos():
     except Exception as ex:
         logger.error("Error: %s" % (ex))
         return
+
     geolookup = Nominatim(user_agent="ffmuc_respondd")
     aps = Accesspoints(accesspoints=[])
-    for site in c.get_sites():
-        if cfg.version == "UDMP-unifiOS":
-            c = Controller(
-                host=cfg.controller_url,
-                username=cfg.username,
-                password=cfg.password,
-                port=cfg.controller_port,
-                version=cfg.version,
-                site_id=site["name"],
-                ssl_verify=cfg.ssl_verify,
-            )
-        else:
-            try:
-                c.switch_site(site["desc"])
-            except Exception as ex:
-                logger.error("Error: %s" % (ex))
-                continue
 
-        aps_for_site = c.get_aps()
-        clients = c.get_clients()
-        for ap in aps_for_site:
-            if (
-                ap.get("name", None) is not None
-                and ap.get("state", 0) != 0
-                and ap.get("type", "na") == "uap"
-            ):
-                ssids = ap.get("vap_table", None)
-                containsSSID = False
-                tx = 0
-                rx = 0
-                if ssids is not None:
-                    for ssid in ssids:
-                        if re.search(
-                            cfg.ssid_regex, ssid.get("essid", ""), re.IGNORECASE
-                        ):
-                            containsSSID = True
-                            tx = tx + ssid.get("tx_bytes", 0)
-                            rx = rx + ssid.get("rx_bytes", 0)
-                if containsSSID:
-                    (
-                        client_count,
-                        client_count24,
-                        client_count5,
-                    ) = get_client_count_for_ap(ap.get("mac", None), clients, cfg)
+    with ThreadPoolExecutor(max_workers=5) as executor:
+        futures = {
+            executor.submit(process_site, site, cfg, ffnodes, geolookup): site
+            for site in c.get_sites()
+        }
+        for future in as_completed(futures):
+            site_results = future.result()
+            aps.accesspoints.extend(site_results)
 
-                    (
-                        channel5,
-                        rx_bytes5,
-                        tx_bytes5,
-                        channel24,
-                        rx_bytes24,
-                        tx_bytes24,
-                    ) = get_ap_channel_usage(ssids, cfg)
-
-                    lat, lon = 0, 0
-                    neighbour_macs = []
-                    if ap.get("snmp_location", None) is not None:
-                        try:
-                            lat, lon = get_location_by_address(
-                                ap["snmp_location"], geolookup
-                            )
-                        except:
-                            pass
-                    try:
-                        neighbour_macs.append(cfg.offloader_mac.get(site["desc"], None))
-                        offloader_id = cfg.offloader_mac.get(site["desc"], "").replace(
-                            ":", ""
-                        )
-                        offloader = list(
-                            filter(
-                                lambda x: x["mac"]
-                                == cfg.offloader_mac.get(site["desc"], ""),
-                                ffnodes["nodes"],
-                            )
-                        )[0]
-                    except:
-                        offloader_id = None
-                        offloader = {}
-                        pass
-                    uplink = ap.get("uplink", None)
-                    if uplink is not None and uplink.get("ap_mac", None) is not None:
-                        neighbour_macs.append(uplink.get("ap_mac"))
-                    lldp_table = ap.get("lldp_table", None)
-                    if lldp_table is not None:
-                        for lldp_entry in lldp_table:
-                            if not lldp_entry.get("is_wired", True):
-                                neighbour_macs.append(lldp_entry.get("chassis_id"))
-                    aps.accesspoints.append(
-                        Accesspoint(
-                            name=ap.get("name", None),
-                            mac=ap.get("mac", None),
-                            snmp_location=ap.get("snmp_location", None),
-                            client_count=client_count,
-                            client_count24=client_count24,
-                            client_count5=client_count5,
-                            channel5=channel5,
-                            rx_bytes5=rx_bytes5,
-                            tx_bytes5=tx_bytes5,
-                            channel24=channel24,
-                            rx_bytes24=rx_bytes24,
-                            tx_bytes24=tx_bytes24,
-                            latitude=float(lat),
-                            longitude=float(lon),
-                            model=ap.get("model", None),
-                            firmware=ap.get("version", None),
-                            uptime=ap.get("uptime", None),
-                            contact=ap.get("snmp_contact", None),
-                            load_avg=float(
-                                ap.get("sys_stats", {}).get("loadavg_1", 0.0)
-                            ),
-                            mem_used=ap.get("sys_stats", {}).get("mem_used", 0),
-                            mem_buffer=ap.get("sys_stats", {}).get("mem_buffer", 0),
-                            mem_total=ap.get("sys_stats", {}).get("mem_total", 0),
-                            tx_bytes=tx,
-                            rx_bytes=rx,
-                            gateway=offloader.get("gateway", None),
-                            gateway6=offloader.get("gateway6", None),
-                            gateway_nexthop=offloader_id,
-                            neighbour_macs=neighbour_macs,
-                            domain_code=offloader.get("domain", cfg.fallback_domain),
-                        )
-                    )
     return aps
 
 
