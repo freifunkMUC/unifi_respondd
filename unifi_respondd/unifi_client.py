@@ -111,7 +111,7 @@ def get_ap_channel_usage(ssids, cfg):
                 tx_bytes5 = tx_bytes
             else:
                 channel24 = channel
-                rx_bytes24 = tx_bytes
+                rx_bytes24 = rx_bytes
                 tx_bytes24 = tx_bytes
 
     return channel5, rx_bytes5, tx_bytes5, channel24, rx_bytes24, tx_bytes24
