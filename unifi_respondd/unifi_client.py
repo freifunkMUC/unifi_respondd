@@ -189,7 +189,9 @@ def get_infos():
                 rx = 0
                 if ssids is not None:
                     for ssid in ssids:
-                        if re.search(cfg.ssid_regex, ssid.get("essid", "")):
+                        if re.search(
+                            cfg.ssid_regex, ssid.get("essid", ""), re.IGNORECASE
+                        ):
                             containsSSID = True
                             tx = tx + ssid.get("tx_bytes", 0)
                             rx = rx + ssid.get("rx_bytes", 0)
