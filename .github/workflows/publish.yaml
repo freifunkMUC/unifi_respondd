@@ -81,11 +81,11 @@ jobs:
         uses: pypa/gh-action-pypi-publish@76f52bc884231f62b9a034ebfe128415bbaabdfc # v1.12.4
         with:
           repository-url: https://test.pypi.org/legacy/
-          password: ${{ secrets.TEST_PYPI_API_TOKEN }}
+          attestations: true
 
       - name: Publish to PyPI
         # only publish to PyPi when a tag was created
         if: contains(github.ref, 'refs/tags')
         uses: pypa/gh-action-pypi-publish@76f52bc884231f62b9a034ebfe128415bbaabdfc # v1.12.4
         with:
-          password: ${{ secrets.PYPI_API_TOKEN }}
+          attestations: true
