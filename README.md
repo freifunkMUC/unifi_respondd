@@ -58,11 +58,11 @@ To link an offloader to your site in unifi_respondd, specify the MAC address of 
 ### Steps
 
 1. Open your unifi_respondd YAML configuration file (e.g., `unifi_respondd.yaml`).
-2. Add or find the section for offloader settings. (Seactionname `offloader_mac`)
+2. Add or find the section for offloader settings. (Sectionname `offloader_mac`)
 3. Insert the MAC address of your offloader device like this:
    ```yaml
 	offloader_mac:
-    SiteName: 00:00:00:00:00:00
+	    SiteName: 00:00:00:00:00:00
    ```
 4. Save the YAML file.
 5. Restart the unifi_respondd service to apply the changes.
