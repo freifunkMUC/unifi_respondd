@@ -139,18 +139,44 @@ def scrape(url):
         logger.error("Error: %s" % (ex))
 
 
-def get_infos():
-    """This function gathers all the information and returns a list of Accesspoint objects."""
-    cfg = config.Config.from_dict(config.load_config())
-    ffnodes = scrape(cfg.nodelist)
+def get_infos_from_config(
+    controller_url,
+    controller_port,
+    username,
+    password,
+    version,
+    ssl_verify,
+    ssid_regex,
+    offloader_mac,
+    nodelist,
+    fallback_domain,
+):
+    """This function gathers all the information from a UniFi controller and returns a list of Accesspoint objects.
+    
+    Args:
+        controller_url: The UniFi controller URL
+        controller_port: The UniFi controller port
+        username: Username for authentication
+        password: Password for authentication
+        version: UniFi version
+        ssl_verify: Whether to verify SSL certificates
+        ssid_regex: Regex pattern to filter SSIDs
+        offloader_mac: Dictionary mapping site names to offloader MACs
+        nodelist: URL to the nodelist/meshviewer JSON
+        fallback_domain: Fallback domain name
+        
+    Returns:
+        Accesspoints object containing list of Accesspoint objects
+    """
+    ffnodes = scrape(nodelist)
     try:
         c = Controller(
-            host=cfg.controller_url,
-            username=cfg.username,
-            password=cfg.password,
-            port=cfg.controller_port,
-            version=cfg.version,
-            ssl_verify=cfg.ssl_verify,
+            host=controller_url,
+            username=username,
+            password=password,
+            port=controller_port,
+            version=version,
+            ssl_verify=ssl_verify,
         )
     except Exception as ex:
         logger.error("Error: %s" % (ex))
