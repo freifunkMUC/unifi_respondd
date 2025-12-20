@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
 
+from abc import ABC, abstractmethod
 from geopy.point import Point
 from pyunifi.controller import Controller
-from typing import List
+from typing import List, Optional
 from geopy.geocoders import Nominatim
 from unifi_respondd import config
 from requests import get as rget
@@ -78,6 +79,220 @@ class Accesspoints:
     accesspoints: List[Accesspoint]
 
 
+class UniFiClientBase(ABC):
+    """Abstract base class for UniFi client implementations.
+    
+    This class defines the interface for retrieving access point information
+    from a UniFi controller.
+    """
+    
+    @abstractmethod
+    def get_infos(self) -> Optional[Accesspoints]:
+        """Gather all access point information from the UniFi controller.
+        
+        Returns:
+            Accesspoints object containing a list of Accesspoint objects,
+            or None if an error occurs.
+        """
+        pass
+    
+    @abstractmethod
+    def scrape(self, url: str) -> Optional[dict]:
+        """Fetch JSON data from a remote URL.
+        
+        Args:
+            url: The URL to fetch data from.
+            
+        Returns:
+            The JSON data as a dictionary, or None if an error occurs.
+        """
+        pass
+
+
+class UniFiClient(UniFiClientBase):
+    """Concrete implementation of UniFi client for retrieving access point information.
+    
+    This class implements the UniFiClientBase interface and provides methods
+    to gather access point information from a UniFi controller.
+    
+    Attributes:
+        cfg: Configuration object containing controller connection details.
+    """
+    
+    def __init__(self, cfg: config.Config):
+        """Initialize the UniFi client with configuration.
+        
+        Args:
+            cfg: Configuration object containing controller connection details.
+        """
+        self.cfg = cfg
+    
+    def scrape(self, url: str) -> Optional[dict]:
+        """Fetch JSON data from a remote URL.
+        
+        Args:
+            url: The URL to fetch data from.
+            
+        Returns:
+            The JSON data as a dictionary, or None if an error occurs.
+        """
+        try:
+            return rget(url).json()
+        except Exception as ex:
+            logger.error("Error: %s" % (ex))
+            return None
+    
+    def get_infos(self) -> Optional[Accesspoints]:
+        """Gather all access point information from the UniFi controller.
+        
+        This method connects to the UniFi controller, retrieves information
+        about all access points, and returns an Accesspoints object containing
+        the processed information.
+        
+        Returns:
+            Accesspoints object containing a list of Accesspoint objects,
+            or None if an error occurs.
+        """
+        ffnodes = self.scrape(self.cfg.nodelist)
+        try:
+            c = Controller(
+                host=self.cfg.controller_url,
+                username=self.cfg.username,
+                password=self.cfg.password,
+                port=self.cfg.controller_port,
+                version=self.cfg.version,
+                ssl_verify=self.cfg.ssl_verify,
+            )
+        except Exception as ex:
+            logger.error("Error: %s" % (ex))
+            return None
+        geolookup = Nominatim(user_agent="ffmuc_respondd")
+        aps = Accesspoints(accesspoints=[])
+        for site in c.get_sites():
+            if self.cfg.version == "UDMP-unifiOS":
+                c = Controller(
+                    host=self.cfg.controller_url,
+                    username=self.cfg.username,
+                    password=self.cfg.password,
+                    port=self.cfg.controller_port,
+                    version=self.cfg.version,
+                    site_id=site["name"],
+                    ssl_verify=self.cfg.ssl_verify,
+                )
+            else:
+                try:
+                    c.switch_site(site["desc"])
+                except Exception as ex:
+                    logger.error("Error: %s" % (ex))
+                    continue
+
+            aps_for_site = c.get_aps()
+            clients = c.get_clients()
+            for ap in aps_for_site:
+                if (
+                    ap.get("name", None) is not None
+                    and ap.get("state", 0) != 0
+                    and ap.get("type", "na") == "uap"
+                ):
+                    ssids = ap.get("vap_table", None)
+                    containsSSID = False
+                    tx = 0
+                    rx = 0
+                    if ssids is not None:
+                        for ssid in ssids:
+                            if re.search(
+                                self.cfg.ssid_regex, ssid.get("essid", ""), re.IGNORECASE
+                            ):
+                                containsSSID = True
+                                tx = tx + ssid.get("tx_bytes", 0)
+                                rx = rx + ssid.get("rx_bytes", 0)
+                    if containsSSID:
+                        (
+                            client_count,
+                            client_count24,
+                            client_count5,
+                        ) = get_client_count_for_ap(ap.get("mac", None), clients, self.cfg)
+
+                        (
+                            channel5,
+                            rx_bytes5,
+                            tx_bytes5,
+                            channel24,
+                            rx_bytes24,
+                            tx_bytes24,
+                        ) = get_ap_channel_usage(ssids, self.cfg)
+
+                        lat, lon = 0, 0
+                        neighbour_macs = []
+                        if ap.get("snmp_location", None) is not None:
+                            try:
+                                lat, lon = get_location_by_address(
+                                    ap["snmp_location"], geolookup
+                                )
+                            except:
+                                pass
+                        try:
+                            neighbour_macs.append(self.cfg.offloader_mac.get(site["desc"], None))
+                            offloader_id = self.cfg.offloader_mac.get(site["desc"], "").replace(
+                                ":", ""
+                            )
+                            offloader = list(
+                                filter(
+                                    lambda x: x["mac"]
+                                    == self.cfg.offloader_mac.get(site["desc"], ""),
+                                    ffnodes["nodes"],
+                                )
+                            )[0]
+                        except:
+                            offloader_id = None
+                            offloader = {}
+                            pass
+                        uplink = ap.get("uplink", None)
+                        if uplink is not None and uplink.get("ap_mac", None) is not None:
+                            neighbour_macs.append(uplink.get("ap_mac"))
+                        lldp_table = ap.get("lldp_table", None)
+                        if lldp_table is not None:
+                            for lldp_entry in lldp_table:
+                                if not lldp_entry.get("is_wired", True):
+                                    neighbour_macs.append(lldp_entry.get("chassis_id"))
+                        aps.accesspoints.append(
+                            Accesspoint(
+                                name=ap.get("name", None),
+                                mac=ap.get("mac", None),
+                                snmp_location=ap.get("snmp_location", None),
+                                client_count=client_count,
+                                client_count24=client_count24,
+                                client_count5=client_count5,
+                                channel5=channel5,
+                                rx_bytes5=rx_bytes5,
+                                tx_bytes5=tx_bytes5,
+                                channel24=channel24,
+                                rx_bytes24=rx_bytes24,
+                                tx_bytes24=tx_bytes24,
+                                latitude=float(lat),
+                                longitude=float(lon),
+                                model=ap.get("model", None),
+                                firmware=ap.get("version", None),
+                                uptime=ap.get("uptime", None),
+                                contact=ap.get("snmp_contact", None),
+                                load_avg=float(
+                                    ap.get("sys_stats", {}).get("loadavg_1", 0.0)
+                                ),
+                                mem_used=ap.get("sys_stats", {}).get("mem_used", 0),
+                                mem_buffer=ap.get("sys_stats", {}).get("mem_buffer", 0),
+                                mem_total=ap.get("sys_stats", {}).get("mem_total", 0),
+                                tx_bytes=tx,
+                                rx_bytes=rx,
+                                gateway=offloader.get("gateway", None),
+                                gateway6=offloader.get("gateway6", None),
+                                gateway_nexthop=offloader_id,
+                                neighbour_macs=neighbour_macs,
+                                domain_code=offloader.get("domain", self.cfg.fallback_domain),
+                            )
+                        )
+        return aps
+
+
 def get_client_count_for_ap(ap_mac, clients, cfg):
     """This function returns the number total clients, 2,4Ghz clients and 5Ghz clients connected to an AP."""
     client5_count = 0
@@ -132,154 +347,27 @@ def get_location_by_address(address, app):
 
 
 def scrape(url):
-    """returns remote json"""
+    """Deprecated: Use UniFiClient.scrape() instead.
+    
+    This function is kept for backward compatibility.
+    Returns remote json from the given URL.
+    """
     try:
         return rget(url).json()
     except Exception as ex:
         logger.error("Error: %s" % (ex))
+        return None
 
 
 def get_infos():
-    """This function gathers all the information and returns a list of Accesspoint objects."""
+    """Deprecated: Use UniFiClient.get_infos() instead.
+    
+    This function is kept for backward compatibility.
+    Gathers all the information and returns a list of Accesspoint objects.
+    """
     cfg = config.Config.from_dict(config.load_config())
-    ffnodes = scrape(cfg.nodelist)
-    try:
-        c = Controller(
-            host=cfg.controller_url,
-            username=cfg.username,
-            password=cfg.password,
-            port=cfg.controller_port,
-            version=cfg.version,
-            ssl_verify=cfg.ssl_verify,
-        )
-    except Exception as ex:
-        logger.error("Error: %s" % (ex))
-        return
-    geolookup = Nominatim(user_agent="ffmuc_respondd")
-    aps = Accesspoints(accesspoints=[])
-    for site in c.get_sites():
-        if cfg.version == "UDMP-unifiOS":
-            c = Controller(
-                host=cfg.controller_url,
-                username=cfg.username,
-                password=cfg.password,
-                port=cfg.controller_port,
-                version=cfg.version,
-                site_id=site["name"],
-                ssl_verify=cfg.ssl_verify,
-            )
-        else:
-            try:
-                c.switch_site(site["desc"])
-            except Exception as ex:
-                logger.error("Error: %s" % (ex))
-                continue
-
-        aps_for_site = c.get_aps()
-        clients = c.get_clients()
-        for ap in aps_for_site:
-            if (
-                ap.get("name", None) is not None
-                and ap.get("state", 0) != 0
-                and ap.get("type", "na") == "uap"
-            ):
-                ssids = ap.get("vap_table", None)
-                containsSSID = False
-                tx = 0
-                rx = 0
-                if ssids is not None:
-                    for ssid in ssids:
-                        if re.search(
-                            cfg.ssid_regex, ssid.get("essid", ""), re.IGNORECASE
-                        ):
-                            containsSSID = True
-                            tx = tx + ssid.get("tx_bytes", 0)
-                            rx = rx + ssid.get("rx_bytes", 0)
-                if containsSSID:
-                    (
-                        client_count,
-                        client_count24,
-                        client_count5,
-                    ) = get_client_count_for_ap(ap.get("mac", None), clients, cfg)
-
-                    (
-                        channel5,
-                        rx_bytes5,
-                        tx_bytes5,
-                        channel24,
-                        rx_bytes24,
-                        tx_bytes24,
-                    ) = get_ap_channel_usage(ssids, cfg)
-
-                    lat, lon = 0, 0
-                    neighbour_macs = []
-                    if ap.get("snmp_location", None) is not None:
-                        try:
-                            lat, lon = get_location_by_address(
-                                ap["snmp_location"], geolookup
-                            )
-                        except:
-                            pass
-                    try:
-                        neighbour_macs.append(cfg.offloader_mac.get(site["desc"], None))
-                        offloader_id = cfg.offloader_mac.get(site["desc"], "").replace(
-                            ":", ""
-                        )
-                        offloader = list(
-                            filter(
-                                lambda x: x["mac"]
-                                == cfg.offloader_mac.get(site["desc"], ""),
-                                ffnodes["nodes"],
-                            )
-                        )[0]
-                    except:
-                        offloader_id = None
-                        offloader = {}
-                        pass
-                    uplink = ap.get("uplink", None)
-                    if uplink is not None and uplink.get("ap_mac", None) is not None:
-                        neighbour_macs.append(uplink.get("ap_mac"))
-                    lldp_table = ap.get("lldp_table", None)
-                    if lldp_table is not None:
-                        for lldp_entry in lldp_table:
-                            if not lldp_entry.get("is_wired", True):
-                                neighbour_macs.append(lldp_entry.get("chassis_id"))
-                    aps.accesspoints.append(
-                        Accesspoint(
-                            name=ap.get("name", None),
-                            mac=ap.get("mac", None),
-                            snmp_location=ap.get("snmp_location", None),
-                            client_count=client_count,
-                            client_count24=client_count24,
-                            client_count5=client_count5,
-                            channel5=channel5,
-                            rx_bytes5=rx_bytes5,
-                            tx_bytes5=tx_bytes5,
-                            channel24=channel24,
-                            rx_bytes24=rx_bytes24,
-                            tx_bytes24=tx_bytes24,
-                            latitude=float(lat),
-                            longitude=float(lon),
-                            model=ap.get("model", None),
-                            firmware=ap.get("version", None),
-                            uptime=ap.get("uptime", None),
-                            contact=ap.get("snmp_contact", None),
-                            load_avg=float(
-                                ap.get("sys_stats", {}).get("loadavg_1", 0.0)
-                            ),
-                            mem_used=ap.get("sys_stats", {}).get("mem_used", 0),
-                            mem_buffer=ap.get("sys_stats", {}).get("mem_buffer", 0),
-                            mem_total=ap.get("sys_stats", {}).get("mem_total", 0),
-                            tx_bytes=tx,
-                            rx_bytes=rx,
-                            gateway=offloader.get("gateway", None),
-                            gateway6=offloader.get("gateway6", None),
-                            gateway_nexthop=offloader_id,
-                            neighbour_macs=neighbour_macs,
-                            domain_code=offloader.get("domain", cfg.fallback_domain),
-                        )
-                    )
-    return aps
+    client = UniFiClient(cfg)
+    return client.get_infos()
 
 
 def main():
