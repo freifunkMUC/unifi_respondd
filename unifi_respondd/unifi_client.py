@@ -78,12 +78,12 @@ class Accesspoints:
     accesspoints: List[Accesspoint]
 
 
-def get_client_count_for_ap(ap_mac, clients, cfg):
+def get_client_count_for_ap(ap_mac, clients, ssid_regex):
     """This function returns the number total clients, 2,4Ghz clients and 5Ghz clients connected to an AP."""
     client5_count = 0
     client24_count = 0
     for client in clients:
-        if re.search(cfg.ssid_regex, client.get("essid", ""), re.IGNORECASE):
+        if re.search(ssid_regex, client.get("essid", ""), re.IGNORECASE):
             if client.get("ap_mac", "No mac") == ap_mac:
                 if client.get("channel", 0) > 14:
                     client5_count += 1
@@ -92,7 +92,7 @@ def get_client_count_for_ap(ap_mac, clients, cfg):
     return client24_count + client5_count, client24_count, client5_count
 
 
-def get_ap_channel_usage(ssids, cfg):
+def get_ap_channel_usage(ssids, ssid_regex):
     """This function returns the channels used for the Freifunk SSIDs"""
     channel5 = None
     rx_bytes5 = None
@@ -101,7 +101,7 @@ def get_ap_channel_usage(ssids, cfg):
     rx_bytes24 = None
     tx_bytes24 = None
     for ssid in ssids:
-        if re.search(cfg.ssid_regex, ssid.get("essid", ""), re.IGNORECASE):
+        if re.search(ssid_regex, ssid.get("essid", ""), re.IGNORECASE):
             channel = ssid.get("channel", 0)
             rx_bytes = ssid.get("rx_bytes", 0)
             tx_bytes = ssid.get("tx_bytes", 0)
@@ -152,7 +152,7 @@ def get_infos_from_config(
     fallback_domain,
 ):
     """This function gathers all the information from a UniFi controller and returns a list of Accesspoint objects.
-    
+
     Args:
         controller_url: The UniFi controller URL
         controller_port: The UniFi controller port
@@ -164,7 +164,7 @@ def get_infos_from_config(
         offloader_mac: Dictionary mapping site names to offloader MACs
         nodelist: URL to the nodelist/meshviewer JSON
         fallback_domain: Fallback domain name
-        
+
     Returns:
         Accesspoints object containing list of Accesspoint objects
     """
@@ -184,15 +184,15 @@ def get_infos_from_config(
     geolookup = Nominatim(user_agent="ffmuc_respondd")
     aps = Accesspoints(accesspoints=[])
     for site in c.get_sites():
-        if cfg.version == "UDMP-unifiOS":
+        if version == "UDMP-unifiOS":
             c = Controller(
-                host=cfg.controller_url,
-                username=cfg.username,
-                password=cfg.password,
-                port=cfg.controller_port,
-                version=cfg.version,
+                host=controller_url,
+                username=username,
+                password=password,
+                port=controller_port,
+                version=version,
                 site_id=site["name"],
-                ssl_verify=cfg.ssl_verify,
+                ssl_verify=ssl_verify,
             )
         else:
             try:
@@ -215,9 +215,7 @@ def get_infos_from_config(
                 rx = 0
                 if ssids is not None:
                     for ssid in ssids:
-                        if re.search(
-                            cfg.ssid_regex, ssid.get("essid", ""), re.IGNORECASE
-                        ):
+                        if re.search(ssid_regex, ssid.get("essid", ""), re.IGNORECASE):
                             containsSSID = True
                             tx = tx + ssid.get("tx_bytes", 0)
                             rx = rx + ssid.get("rx_bytes", 0)
@@ -226,7 +224,9 @@ def get_infos_from_config(
                         client_count,
                         client_count24,
                         client_count5,
-                    ) = get_client_count_for_ap(ap.get("mac", None), clients, cfg)
+                    ) = get_client_count_for_ap(
+                        ap.get("mac", None), clients, ssid_regex
+                    )
 
                     (
                         channel5,
@@ -235,7 +235,7 @@ def get_infos_from_config(
                         channel24,
                         rx_bytes24,
                         tx_bytes24,
-                    ) = get_ap_channel_usage(ssids, cfg)
+                    ) = get_ap_channel_usage(ssids, ssid_regex)
 
                     lat, lon = 0, 0
                     neighbour_macs = []
@@ -247,14 +247,14 @@ def get_infos_from_config(
                         except:
                             pass
                     try:
-                        neighbour_macs.append(cfg.offloader_mac.get(site["desc"], None))
-                        offloader_id = cfg.offloader_mac.get(site["desc"], "").replace(
+                        neighbour_macs.append(offloader_mac.get(site["desc"], None))
+                        offloader_id = offloader_mac.get(site["desc"], "").replace(
                             ":", ""
                         )
                         offloader = list(
                             filter(
                                 lambda x: x["mac"]
-                                == cfg.offloader_mac.get(site["desc"], ""),
+                                == offloader_mac.get(site["desc"], ""),
                                 ffnodes["nodes"],
                             )
                         )[0]
@@ -302,10 +302,31 @@ def get_infos_from_config(
                             gateway6=offloader.get("gateway6", None),
                             gateway_nexthop=offloader_id,
                             neighbour_macs=neighbour_macs,
-                            domain_code=offloader.get("domain", cfg.fallback_domain),
+                            domain_code=offloader.get("domain", fallback_domain),
                         )
                     )
     return aps
+
+
+def get_infos():
+    """This function gathers all the information and returns a list of Accesspoint objects.
+
+    This is a wrapper function that maintains backward compatibility with the existing API.
+    It loads configuration from the default config file and calls get_infos_from_config.
+    """
+    cfg = config.Config.from_dict(config.load_config())
+    return get_infos_from_config(
+        controller_url=cfg.controller_url,
+        controller_port=cfg.controller_port,
+        username=cfg.username,
+        password=cfg.password,
+        version=cfg.version,
+        ssl_verify=cfg.ssl_verify,
+        ssid_regex=cfg.ssid_regex,
+        offloader_mac=cfg.offloader_mac,
+        nodelist=cfg.nodelist,
+        fallback_domain=cfg.fallback_domain,
+    )
 
 
 def main():

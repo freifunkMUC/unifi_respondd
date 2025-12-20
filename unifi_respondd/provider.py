@@ -11,7 +11,7 @@ class Provider(ABC):
     @abstractmethod
     def get_accesspoints(self) -> unifi_client.Accesspoints:
         """Fetches access point information from the provider.
-        
+
         Returns:
             Accesspoints object containing a list of access points.
         """
@@ -28,7 +28,7 @@ class UnifiProvider(Provider):
 
     def __init__(self, config: Dict[str, Any]):
         """Initializes the UniFi provider with configuration.
-        
+
         Args:
             config: Dictionary containing UniFi-specific configuration:
                 - controller_url: The UniFi controller URL
@@ -76,14 +76,14 @@ class UnifiProvider(Provider):
 
 def create_provider(provider_type: str, config: Dict[str, Any]) -> Provider:
     """Factory function to create a provider instance.
-    
+
     Args:
         provider_type: Type of provider to create (e.g., 'unifi')
         config: Configuration dictionary for the provider
-        
+
     Returns:
         Provider instance
-        
+
     Raises:
         ValueError: If provider_type is not supported
     """
