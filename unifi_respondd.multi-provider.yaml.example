@@ -1,0 +1,74 @@
+# Multi-Provider Configuration Example
+# This configuration format allows you to connect to multiple controllers/providers
+
+providers:
+  # UniFi Controller 1
+  - type: unifi
+    config:
+      controller_url: unifi1.lan
+      controller_port: 8443
+      username: ubnt
+      password: ubnt
+      ssid_regex: .*freifunk.*
+      offloader_mac:
+        SiteName: 00:00:00:00:00:00
+        SiteName2: 00:00:00:00:00:00
+      nodelist: https://MAPURL/data/meshviewer.json
+      version: v5
+      ssl_verify: True
+      fallback_domain: "unifi_provider1"
+  
+  # UniFi Controller 2 (optional - example of multiple UniFi controllers)
+  - type: unifi
+    config:
+      controller_url: unifi2.lan
+      controller_port: 8443
+      username: admin
+      password: admin123
+      ssid_regex: .*freifunk.*
+      offloader_mac:
+        SiteA: 11:11:11:11:11:11
+      nodelist: https://MAPURL/data/meshviewer.json
+      version: v5
+      ssl_verify: True
+      fallback_domain: "unifi_provider2"
+  
+  # TP-Link Omada (future implementation)
+  # - type: omada
+  #   config:
+  #     controller_url: omada.lan
+  #     controller_port: 8043
+  #     username: admin
+  #     password: password
+  #     ssid_regex: .*freifunk.*
+  #     nodelist: https://MAPURL/data/meshviewer.json
+  
+  # Ubiquiti UISP (future implementation)
+  # - type: uisp
+  #   config:
+  #     controller_url: uisp.lan
+  #     api_token: your_api_token_here
+  #     ssid_regex: .*freifunk.*
+  #     nodelist: https://MAPURL/data/meshviewer.json
+
+# Respondd settings (same for all providers)
+multicast_enabled: false
+multicast_address: ff05::2:1001
+multicast_port: 1001
+unicast_address: fe80::68ff:94ff:fe00:1504
+unicast_port: 10001
+interface: eth0
+verbose: true
+logging_config:
+    formatters:
+      standard:
+        format: '%(asctime)s,%(msecs)d %(levelname)-8s [%(filename)s:%(lineno)d] %(message)s'
+    handlers:
+      console:
+        class: logging.StreamHandler
+        formatter: standard
+    root:
+      handlers:
+      - console
+      level: DEBUG
+    version: 1

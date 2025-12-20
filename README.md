@@ -1,21 +1,97 @@
 # unifi_respondd
 
-This queries the API of a UniFi controller to get the current status of the Accesspoints and sends the information via the respondd protocol. Thus it can be picked up by `yanic` and other respondd queriers.
+This tool queries controller APIs (UniFi, Omada, UISP, etc.) to get the current status of Access Points and sends the information via the respondd protocol. Thus it can be picked up by `yanic` and other respondd queriers.
 
 ## Overview
 
 ```mermaid
 graph TD;
-	A{"*respondd_main*"} -->| | B("*unifi_client*")
+	A{"*respondd_main*"} -->| | B("*provider*")
     A -->| | C("*respondd_client*")
-	B -->|"RestFul API"| D("unifi_controller")
+	B -->|"RestFul API"| D("unifi_controller / omada / uisp")
     C -->|"Subscribe"| E("multicast")
     C -->|"Send per interval / On multicast request"| F("unicast")
     G{"yanic"} -->|"Request metrics"| E
     F -->|"Receive"| G
 ```
 
-## Config File:
+## Multi-Provider Support
+
+The tool now supports multiple controller providers in a single configuration. You can connect to multiple UniFi controllers, Omada controllers, or UISP systems simultaneously.
+
+### Multi-Provider Config File (New Format):
+```yaml
+providers:
+  # UniFi Controller 1
+  - type: unifi
+    config:
+      controller_url: unifi1.lan
+      controller_port: 8443
+      username: ubnt
+      password: ubnt
+      ssid_regex: .*freifunk.*
+      offloader_mac:
+        SiteName: 00:00:00:00:00:00
+      nodelist: https://MAPURL/data/meshviewer.json
+      version: v5
+      ssl_verify: True
+      fallback_domain: "unifi_provider1"
+  
+  # UniFi Controller 2
+  - type: unifi
+    config:
+      controller_url: unifi2.lan
+      controller_port: 8443
+      username: admin
+      password: admin123
+      ssid_regex: .*freifunk.*
+      offloader_mac:
+        SiteA: 11:11:11:11:11:11
+      nodelist: https://MAPURL/data/meshviewer.json
+      version: v5
+      ssl_verify: True
+      fallback_domain: "unifi_provider2"
+  
+  # Future: TP-Link Omada support
+  # - type: omada
+  #   config:
+  #     controller_url: omada.lan
+  #     ...
+  
+  # Future: Ubiquiti UISP support  
+  # - type: uisp
+  #   config:
+  #     controller_url: uisp.lan
+  #     ...
+
+# Respondd settings
+multicast_enabled: false
+multicast_address: ff05::2:1001
+multicast_port: 1001
+unicast_address: fe80::68ff:94ff:fe00:1504
+unicast_port: 10001
+interface: eth0
+verbose: true
+logging_config:
+    formatters:
+      standard:
+        format: '%(asctime)s,%(msecs)d %(levelname)-8s [%(filename)s:%(lineno)d] %(message)s'
+    handlers:
+      console:
+        class: logging.StreamHandler
+        formatter: standard
+    root:
+      handlers:
+      - console
+      level: DEBUG
+    version: 1
+```
+
+See `unifi_respondd.multi-provider.yaml.example` for a complete example.
+
+### Legacy Config File (Single UniFi Controller):
+The legacy single-controller format is still supported for backward compatibility:
+
 ```yaml
 controller_url: unifi.lan
 controller_port: 8443

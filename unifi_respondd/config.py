@@ -19,23 +19,42 @@ class ConfigFileNotFoundError(Error):
 
 
 @dataclasses.dataclass
+class ProviderConfig:
+    """Configuration for a single provider.
+    Attributes:
+        type: The type of provider (e.g., 'unifi', 'omada', 'uisp').
+        config: Provider-specific configuration dictionary.
+    """
+
+    type: str
+    config: Dict[str, Any]
+
+
+@dataclasses.dataclass
 class Config:
     """A representation of the configuration file.
     Attributes:
-        controller_url: The unifi controller URL.
-        controller_port: The unifi Controller port.
-        username: The username for unifi controller.
-        password: The password for unifi controller.
-    """
+        providers: List of provider configurations (new format).
+        multicast_address: The multicast address for respondd.
+        multicast_port: The multicast port for respondd.
+        unicast_address: The unicast address for respondd.
+        unicast_port: The unicast port for respondd.
+        interface: The network interface to use.
+        verbose: Enable verbose logging.
+        multicast_enabled: Enable multicast support.
 
-    controller_url: str
-    controller_port: int
-    username: str
-    password: str
-    ssid_regex: str
-    offloader_mac: Dict[str, str]
-    nodelist: str
-    fallback_domain: str
+        # Legacy fields for backward compatibility
+        controller_url: The unifi controller URL (deprecated).
+        controller_port: The unifi Controller port (deprecated).
+        username: The username for unifi controller (deprecated).
+        password: The password for unifi controller (deprecated).
+        ssid_regex: SSID regex pattern (deprecated).
+        offloader_mac: Offloader MAC addresses (deprecated).
+        nodelist: Nodelist URL (deprecated).
+        fallback_domain: Fallback domain (deprecated).
+        version: UniFi version (deprecated).
+        ssl_verify: SSL verification (deprecated).
+    """
 
     multicast_address: str
     multicast_port: int
@@ -45,29 +64,61 @@ class Config:
     verbose: bool = False
     multicast_enabled: bool = True
 
-    version: str = "v5"
-    ssl_verify: bool = True
+    # New multi-provider support
+    providers: Optional[List[ProviderConfig]] = None
+
+    # Legacy single-controller fields (for backward compatibility)
+    controller_url: Optional[str] = None
+    controller_port: Optional[int] = None
+    username: Optional[str] = None
+    password: Optional[str] = None
+    ssid_regex: Optional[str] = None
+    offloader_mac: Optional[Dict[str, str]] = None
+    nodelist: Optional[str] = None
+    fallback_domain: Optional[str] = None
+    version: Optional[str] = None
+    ssl_verify: Optional[bool] = None
 
     @classmethod
-    def from_dict(cls, cfg: Dict[str, str]) -> "Config":
+    def from_dict(cls, cfg: Dict[str, Any]) -> "Config":
         """Creates a Config object from a configuration file.
+
+        Supports both legacy format (single UniFi controller) and new format (multiple providers).
+
         Arguments:
             cfg: The configuration file as a dict.
         Returns:
             A Config object.
         """
+        # Check if this is the new multi-provider format
+        providers = None
+        if "providers" in cfg:
+            providers = [
+                ProviderConfig(type=p["type"], config=p["config"])
+                for p in cfg["providers"]
+            ]
+
+        # Handle legacy format - if no providers but has controller_url, create a provider
+        if providers is None and "controller_url" in cfg:
+            # Legacy format detected - create a single UniFi provider from root config
+            provider_config = {
+                "controller_url": cfg["controller_url"],
+                "controller_port": cfg["controller_port"],
+                "username": cfg["username"],
+                "password": cfg["password"],
+                "ssid_regex": cfg["ssid_regex"],
+                "offloader_mac": cfg["offloader_mac"],
+                "nodelist": cfg["nodelist"],
+                "fallback_domain": cfg.get(
+                    "fallback_domain", "unifi_respondd_fallback"
+                ),
+                "version": cfg.get("version", "v5"),
+                "ssl_verify": cfg.get("ssl_verify", True),
+            }
+            providers = [ProviderConfig(type="unifi", config=provider_config)]
 
         return cls(
-            controller_url=cfg["controller_url"],
-            controller_port=cfg["controller_port"],
-            username=cfg["username"],
-            password=cfg["password"],
-            ssid_regex=cfg["ssid_regex"],
-            offloader_mac=cfg["offloader_mac"],
-            nodelist=cfg["nodelist"],
-            fallback_domain=cfg.get("fallback_domain", "unifi_respondd_fallback"),
-            version=cfg["version"],
-            ssl_verify=cfg["ssl_verify"],
+            providers=providers,
             multicast_enabled=cfg["multicast_enabled"],
             multicast_address=cfg["multicast_address"],
             multicast_port=cfg["multicast_port"],
@@ -75,6 +126,17 @@ class Config:
             unicast_port=cfg["unicast_port"],
             interface=cfg["interface"],
             verbose=cfg["verbose"],
+            # Legacy fields (optional, only populated in legacy format)
+            controller_url=cfg.get("controller_url"),
+            controller_port=cfg.get("controller_port"),
+            username=cfg.get("username"),
+            password=cfg.get("password"),
+            ssid_regex=cfg.get("ssid_regex"),
+            offloader_mac=cfg.get("offloader_mac"),
+            nodelist=cfg.get("nodelist"),
+            fallback_domain=cfg.get("fallback_domain", "unifi_respondd_fallback"),
+            version=cfg.get("version", "v5"),
+            ssl_verify=cfg.get("ssl_verify", True),
         )
 
 
@@ -105,6 +167,9 @@ def load_config() -> Dict[str, str]:
         return config
     except (KeyError, TypeError) as e:
         print("Failed to lint file: %s", e)
+        print(
+            "Make sure your config has either 'providers' list or legacy UniFi controller fields"
+        )
         sys.exit(2)
 
 
