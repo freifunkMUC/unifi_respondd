@@ -128,7 +128,7 @@ def get_location_by_address(address, app):
             geocode = app.geocode(address)
             return geocode.raw["lat"], geocode.raw["lon"]
         except:
-            return get_location_by_address(address)
+            return get_location_by_address(address, app)
 
 
 def scrape(url):

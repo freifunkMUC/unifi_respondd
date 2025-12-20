@@ -1,0 +1,29 @@
+[tool.pylint.messages_control]
+disable = [
+  "C0301",  # line-too-long
+  "C0103",  # invalid-name (naming style)
+  "C0114",  # missing-module-docstring
+  "C0115",  # missing-class-docstring
+  "C0116",  # missing-function-docstring
+  "C0209",  # consider-using-f-string
+  "C0411",  # wrong-import-order
+  "C0412",  # ungrouped-imports
+  "C0414",  # useless-import-alias
+  "R0402",  # consider-using-from-import
+  "R0902",  # too-many-instance-attributes
+  "R0912",  # too-many-branches
+  "R0914",  # too-many-locals
+  "R0915",  # too-many-statements
+  "R1702",  # too-many-nested-blocks
+  "R1705",  # no-else-return
+  "R1710",  # inconsistent-return-statements
+  "R1735",  # use-dict-literal
+  "W0107",  # unnecessary-pass
+  "W0611",  # unused-import (already covered by flake8)
+  "W0621",  # redefined-outer-name
+  "W0640",  # cell-var-from-loop
+  "W0702",  # bare-except (already covered by flake8)
+  "W0718",  # broad-exception-caught
+  "W1514",  # unspecified-encoding
+  "W3101",  # missing-timeout
+]

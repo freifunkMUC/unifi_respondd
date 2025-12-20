@@ -1,10 +1,10 @@
-from logging import basicConfig
-from logging import DEBUG
+from logging import basicConfig  # noqa: F401
+from logging import DEBUG  # noqa: F401
 from logging import info as info
-from logging import warning as warning
-from logging import error as error
-from logging import critical as critical
-from logging import debug as debug
+from logging import warning as warning  # noqa: F401
+from logging import error as error  # noqa: F401
+from logging import critical as critical  # noqa: F401
+from logging import debug as debug  # noqa: F401
 from logging import config
 import yaml
 import os.path
