@@ -81,28 +81,28 @@ class Accesspoints:
 
 class UniFiClientBase(ABC):
     """Abstract base class for UniFi client implementations.
-    
+
     This class defines the interface for retrieving access point information
     from a UniFi controller.
     """
-    
+
     @abstractmethod
     def get_infos(self) -> Optional[Accesspoints]:
         """Gather all access point information from the UniFi controller.
-        
+
         Returns:
             Accesspoints object containing a list of Accesspoint objects,
             or None if an error occurs.
         """
         pass
-    
+
     @abstractmethod
     def scrape(self, url: str) -> Optional[dict]:
         """Fetch JSON data from a remote URL.
-        
+
         Args:
             url: The URL to fetch data from.
-            
+
         Returns:
             The JSON data as a dictionary, or None if an error occurs.
         """
@@ -111,28 +111,28 @@ class UniFiClientBase(ABC):
 
 class UniFiClient(UniFiClientBase):
     """Concrete implementation of UniFi client for retrieving access point information.
-    
+
     This class implements the UniFiClientBase interface and provides methods
     to gather access point information from a UniFi controller.
-    
+
     Attributes:
         cfg: Configuration object containing controller connection details.
     """
-    
+
     def __init__(self, cfg: config.Config):
         """Initialize the UniFi client with configuration.
-        
+
         Args:
             cfg: Configuration object containing controller connection details.
         """
         self.cfg = cfg
-    
+
     def scrape(self, url: str) -> Optional[dict]:
         """Fetch JSON data from a remote URL.
-        
+
         Args:
             url: The URL to fetch data from.
-            
+
         Returns:
             The JSON data as a dictionary, or None if an error occurs.
         """
@@ -141,14 +141,14 @@ class UniFiClient(UniFiClientBase):
         except Exception as ex:
             logger.error("Error: %s" % (ex))
             return None
-    
+
     def get_infos(self) -> Optional[Accesspoints]:
         """Gather all access point information from the UniFi controller.
-        
+
         This method connects to the UniFi controller, retrieves information
         about all access points, and returns an Accesspoints object containing
         the processed information.
-        
+
         Returns:
             Accesspoints object containing a list of Accesspoint objects,
             or None if an error occurs.
@@ -201,7 +201,9 @@ class UniFiClient(UniFiClientBase):
                     if ssids is not None:
                         for ssid in ssids:
                             if re.search(
-                                self.cfg.ssid_regex, ssid.get("essid", ""), re.IGNORECASE
+                                self.cfg.ssid_regex,
+                                ssid.get("essid", ""),
+                                re.IGNORECASE,
                             ):
                                 containsSSID = True
                                 tx = tx + ssid.get("tx_bytes", 0)
@@ -211,7 +213,9 @@ class UniFiClient(UniFiClientBase):
                             client_count,
                             client_count24,
                             client_count5,
-                        ) = get_client_count_for_ap(ap.get("mac", None), clients, self.cfg)
+                        ) = get_client_count_for_ap(
+                            ap.get("mac", None), clients, self.cfg
+                        )
 
                         (
                             channel5,
@@ -232,10 +236,12 @@ class UniFiClient(UniFiClientBase):
                             except:
                                 pass
                         try:
-                            neighbour_macs.append(self.cfg.offloader_mac.get(site["desc"], None))
-                            offloader_id = self.cfg.offloader_mac.get(site["desc"], "").replace(
-                                ":", ""
+                            neighbour_macs.append(
+                                self.cfg.offloader_mac.get(site["desc"], None)
                             )
+                            offloader_id = self.cfg.offloader_mac.get(
+                                site["desc"], ""
+                            ).replace(":", "")
                             offloader = list(
                                 filter(
                                     lambda x: x["mac"]
@@ -248,7 +254,10 @@ class UniFiClient(UniFiClientBase):
                             offloader = {}
                             pass
                         uplink = ap.get("uplink", None)
-                        if uplink is not None and uplink.get("ap_mac", None) is not None:
+                        if (
+                            uplink is not None
+                            and uplink.get("ap_mac", None) is not None
+                        ):
                             neighbour_macs.append(uplink.get("ap_mac"))
                         lldp_table = ap.get("lldp_table", None)
                         if lldp_table is not None:
@@ -287,7 +296,9 @@ class UniFiClient(UniFiClientBase):
                                 gateway6=offloader.get("gateway6", None),
                                 gateway_nexthop=offloader_id,
                                 neighbour_macs=neighbour_macs,
-                                domain_code=offloader.get("domain", self.cfg.fallback_domain),
+                                domain_code=offloader.get(
+                                    "domain", self.cfg.fallback_domain
+                                ),
                             )
                         )
         return aps
@@ -348,7 +359,7 @@ def get_location_by_address(address, app):
 
 def scrape(url):
     """Deprecated: Use UniFiClient.scrape() instead.
-    
+
     This function is kept for backward compatibility.
     Returns remote json from the given URL.
     """
@@ -361,7 +372,7 @@ def scrape(url):
 
 def get_infos():
     """Deprecated: Use UniFiClient.get_infos() instead.
-    
+
     This function is kept for backward compatibility.
     Gathers all the information and returns a list of Accesspoint objects.
     """
