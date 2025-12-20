@@ -313,8 +313,19 @@ def get_infos():
 
     This is a wrapper function that maintains backward compatibility with the existing API.
     It loads configuration from the default config file and calls get_infos_from_config.
+
+    Note: This function only works with legacy single-controller configuration format.
+    For multi-provider configurations, use the ResponddClient class directly.
     """
     cfg = config.Config.from_dict(config.load_config())
+
+    # Check if this is a multi-provider config
+    if cfg.providers and not cfg.controller_url:
+        logger.error(
+            "get_infos() called with multi-provider config. Use ResponddClient instead."
+        )
+        return Accesspoints(accesspoints=[])
+
     return get_infos_from_config(
         controller_url=cfg.controller_url,
         controller_port=cfg.controller_port,

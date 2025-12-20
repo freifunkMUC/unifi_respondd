@@ -19,7 +19,7 @@ class Provider(ABC):
 
     @abstractmethod
     def get_provider_type(self) -> str:
-        """Returns the type of provider (e.g., 'unifi', 'mikrotik', etc.)."""
+        """Returns the type of provider (e.g., 'unifi', 'omada', 'uisp')."""
         pass
 
 
