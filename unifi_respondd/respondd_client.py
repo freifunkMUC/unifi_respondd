@@ -1,16 +1,16 @@
 #!/usr/bin/env python3
 
+import dataclasses
+import json
 import socket
 import struct
-import json
-import zlib
 import time
+import zlib
+from typing import Dict, List
 
-import dataclasses
 from dataclasses_json import dataclass_json
-from unifi_respondd import unifi_client
-from unifi_respondd import logger
-from typing import List, Dict
+
+from unifi_respondd import logger, unifi_client
 
 
 @dataclasses.dataclass

@@ -1,16 +1,16 @@
 #!/usr/bin/env python3
 
-from geopy.point import Point
-from pyunifi.controller import Controller
-from typing import List
-from geopy.geocoders import Nominatim
-from unifi_respondd import config
-from requests import get as rget
-from unifi_respondd import logger
-import time
 import dataclasses
 import re
+import time
+from typing import List
 
+from geopy.geocoders import Nominatim
+from geopy.point import Point
+from pyunifi.controller import Controller
+from requests import get as rget
+
+from unifi_respondd import config, logger
 
 ffnodes = None
 
@@ -122,13 +122,13 @@ def get_location_by_address(address, app):
     try:
         point = Point().from_string(address)
         return point.latitude, point.longitude
-    except:
+    except Exception:
         try:
             time.sleep(1)
             geocode = app.geocode(address)
             return geocode.raw["lat"], geocode.raw["lon"]
-        except:
-            return get_location_by_address(address)
+        except Exception:
+            return get_location_by_address(address, app)
 
 
 def scrape(url):
@@ -218,7 +218,7 @@ def get_infos():
                             lat, lon = get_location_by_address(
                                 ap["snmp_location"], geolookup
                             )
-                        except:
+                        except Exception:
                             pass
                     try:
                         neighbour_macs.append(cfg.offloader_mac.get(site["desc"], None))
@@ -232,7 +232,7 @@ def get_infos():
                                 ffnodes["nodes"],
                             )
                         )[0]
-                    except:
+                    except Exception:
                         offloader_id = None
                         offloader = {}
                         pass

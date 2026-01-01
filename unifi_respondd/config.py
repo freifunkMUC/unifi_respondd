@@ -1,10 +1,11 @@
 #!/usr/bin/env python3
-from functools import lru_cache
-import yaml
-import os
-from typing import List, Dict, Any, Union, Optional
 import dataclasses
+import os
 import sys
+from functools import lru_cache
+from typing import Any, Dict, List, Optional, Union
+
+import yaml
 
 UNIFI_RESPONDD_CONFIG_OS_ENV = "UNIFI_RESPONDD_CONFIG_FILE"
 UNIFI_RESPONDD_CONFIG_DEFAULT_LOCATION = "./unifi_respondd.yaml"
