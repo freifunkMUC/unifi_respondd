@@ -9,6 +9,7 @@ import time
 import dataclasses
 from dataclasses_json import dataclass_json
 from unifi_respondd import unifi_client
+from unifi_respondd import provider
 from unifi_respondd import logger
 from typing import List, Dict
 
@@ -243,6 +244,19 @@ class ResponddClient:
         self._timeStop = time.time()
         self._sock = socket.socket(socket.AF_INET6, socket.SOCK_DGRAM)
 
+        # Initialize providers based on config
+        self._providers = []
+        if config.providers:
+            for provider_cfg in config.providers:
+                try:
+                    p = provider.create_provider(provider_cfg.type, provider_cfg.config)
+                    self._providers.append(p)
+                    logger.info(f"Initialized provider: {provider_cfg.type}")
+                except Exception as e:
+                    logger.error(
+                        f"Failed to initialize provider {provider_cfg.type}: {e}"
+                    )
+
     @property
     def _nodeinfos(self):
         return self.getNodeInfos()
@@ -413,8 +427,28 @@ class ResponddClient:
             else:
                 self.sendUnicast()
             self._timeStart = time.time()
-            self._aps = unifi_client.get_infos()
-            if self._aps is None:
+
+            # Fetch access points from all configured providers
+            all_aps = unifi_client.Accesspoints(accesspoints=[])
+            if self._providers:
+                # New multi-provider mode
+                for prov in self._providers:
+                    try:
+                        provider_aps = prov.get_accesspoints()
+                        if provider_aps:
+                            all_aps.accesspoints.extend(provider_aps.accesspoints)
+                    except Exception as e:
+                        logger.error(
+                            f"Error fetching from provider {prov.get_provider_type()}: {e}"
+                        )
+            else:
+                # Legacy mode - use backward compatibility function
+                provider_aps = unifi_client.get_infos()
+                if provider_aps:
+                    all_aps = provider_aps
+
+            self._aps = all_aps
+            if self._aps is None or not self._aps.accesspoints:
                 continue
             if msgSplit[0] == "GET":  # multi_request
                 for request in msgSplit[1:]:
