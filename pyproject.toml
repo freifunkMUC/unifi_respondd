@@ -1,0 +1,8 @@
+[tool.ruff]
+line-length = 120
+
+[tool.ruff.lint]
+# Enable pycodestyle (E, W), pyflakes (F), and isort (I)
+select = ["E", "F", "W", "I"]
+# Ignore line too long since we set line-length above
+ignore = ["E501"]
