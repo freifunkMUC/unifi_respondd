@@ -1,16 +1,18 @@
 #!/usr/bin/env python3
 """Unit tests for unifi_respondd/unifi_client.py module."""
 
+from unittest.mock import Mock, patch
+
 import pytest
-from unittest.mock import Mock, MagicMock, patch, call
+
 from unifi_respondd.unifi_client import (
     Accesspoint,
     Accesspoints,
-    get_client_count_for_ap,
     get_ap_channel_usage,
+    get_client_count_for_ap,
+    get_infos,
     get_location_by_address,
     scrape,
-    get_infos,
 )
 
 
