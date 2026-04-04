@@ -110,11 +110,17 @@ def get_model(json):
 def get_uptime(json):
     """returns the uptime"""
     try:
-        uptime = json.get("overview", {}).get("uptime")
+        overview = json.get("overview", {})
+        uptime = overview.get("uptime")
+        if uptime is None:
+            uptime = overview.get("serviceUptime")
         if uptime is None:
             return 0
 
-        uptime = int(uptime)
+        uptime = _as_int(uptime, 0)
+        if uptime <= 0:
+            return 0
+
         # UISP instances may report uptime in ms. Convert when value is implausibly high for seconds.
         if uptime > 10 * 365 * 24 * 60 * 60:
             uptime = int(uptime / 1000)
