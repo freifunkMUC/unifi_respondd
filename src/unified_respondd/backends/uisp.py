@@ -1,5 +1,5 @@
 from requests import get as rget
-from typing import List, Any, Optional
+from typing import List, Any, Optional, Tuple
 import uisp_respondd.config as config
 
 
@@ -35,6 +35,9 @@ class Accesspoint:
     cpu: Optional[int]
     ram_used_percent: Optional[int]
     loadavg: Optional[float]
+    tx_bytes: Optional[int]
+    rx_bytes: Optional[int]
+    client_total: Optional[int]
 
 
 @dataclasses.dataclass
@@ -190,7 +193,44 @@ def _get_latest_series_value(series: Any) -> Optional[float]:
     return None
 
 
-def get_loadavg(json):
+def _get_latest_metric_value(metric: Any) -> Optional[float]:
+    if isinstance(metric, dict):
+        for key in ("sum", "avg", "max", "min"):
+            value = _get_latest_series_value(metric.get(key))
+            if value is not None:
+                return value
+    return None
+
+
+def get_traffic_bytes(stats: Any) -> Tuple[Optional[int], Optional[int]]:
+    if not isinstance(stats, dict):
+        return None, None
+
+    total_tx = 0.0
+    total_rx = 0.0
+    tx_found = False
+    rx_found = False
+
+    interfaces = stats.get("interfaces", [])
+    if isinstance(interfaces, list):
+        for interface in interfaces:
+            if not isinstance(interface, dict):
+                continue
+
+            tx_value = _get_latest_metric_value(interface.get("txBytes"))
+            if tx_value is not None:
+                total_tx += max(0.0, tx_value)
+                tx_found = True
+
+            rx_value = _get_latest_metric_value(interface.get("rxBytes"))
+            if rx_value is not None:
+                total_rx += max(0.0, rx_value)
+                rx_found = True
+
+    return (int(round(total_tx)) if tx_found else None, int(round(total_rx)) if rx_found else None)
+
+
+def get_loadavg(json, stats: Any = None):
     """returns a pseudo loadavg in range 0..1"""
     cpu = get_cpu_percent(json)
     if cpu is not None:
@@ -198,7 +238,8 @@ def get_loadavg(json):
 
     # Fallback for blackBox devices: try UISP statistics endpoint.
     device_id = get_device_id(json)
-    stats = get_device_statistics(device_id, "hour")
+    if stats is None:
+        stats = get_device_statistics(device_id, "hour")
     if not stats:
         return None
 
@@ -228,15 +269,32 @@ def get_ram_used_percent(json):
     return max(0, min(value, 100))
 
 
+def get_client_total(json):
+    """returns connected client/station count when available"""
+    overview = json.get("overview", {})
+    for key in ("stationsCount", "linkStationsCount", "linkActiveStationsCount"):
+        raw = overview.get(key)
+        if raw is not None:
+            value = _as_int(raw, -1)
+            if value >= 0:
+                return value
+    return None
+
+
 def get_infos():
     aps = Accesspoints(accesspoints=[])
     devices = scrape(cfg.controller_url + "/devices", cfg.token)
     if devices:
         for device in devices:
-            if "Router" not in get_hostname(device):
+            hostname = get_hostname(device)
+            if "Router" not in hostname:
+                device_id = get_device_id(device)
+                stats = get_device_statistics(device_id, "hour") if device_id else None
+                tx_bytes, rx_bytes = get_traffic_bytes(stats)
+
                 aps.accesspoints.append(
                     Accesspoint(
-                        name=get_hostname(device),
+                        name=hostname,
                         mac=get_mac(device),
                         latitude=float(get_location(device)[0]),
                         longitude=float(get_location(device)[1]),
@@ -247,7 +305,10 @@ def get_infos():
                         uptime=get_uptime(device),
                         cpu=get_cpu_percent(device),
                         ram_used_percent=get_ram_used_percent(device),
-                        loadavg=get_loadavg(device),
+                        loadavg=get_loadavg(device, stats),
+                        tx_bytes=tx_bytes,
+                        rx_bytes=rx_bytes,
+                        client_total=get_client_total(device),
                     )
                 )
     return aps
