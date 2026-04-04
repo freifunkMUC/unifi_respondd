@@ -31,6 +31,7 @@ class Accesspoint:
     domain_code: str
     firmware: str
     model: str
+    device_type: str
     uptime: Optional[int]
     cpu: Optional[int]
     ram_used_percent: Optional[int]
@@ -125,7 +126,17 @@ def get_model(json):
         return "UNKNOWN"
 
 
-def get_uptime(json):
+def get_device_type(json):
+    try:
+        dev_type = json.get("identification", {}).get("type")
+        if dev_type:
+            return str(dev_type)
+        return "unknown"
+    except Exception:
+        return "unknown"
+
+
+def get_uptime(json, interfaces: Any = None):
     """returns the uptime"""
     try:
         overview = json.get("overview", {})
@@ -133,7 +144,7 @@ def get_uptime(json):
         if uptime is None:
             uptime = overview.get("serviceUptime")
         if uptime is None:
-            return None
+            return get_uptime_from_interfaces(interfaces)
 
         uptime = _as_int(uptime, 0)
         if uptime <= 0:
@@ -142,9 +153,13 @@ def get_uptime(json):
         # UISP instances may report uptime in ms. Convert when value is implausibly high for seconds.
         if uptime > 10 * 365 * 24 * 60 * 60:
             uptime = int(uptime / 1000)
+
+        # Protect against bogus values from API/device quirks that would render nonsense in meshviewer.
+        if uptime > 5 * 365 * 24 * 60 * 60:
+            return None
         return max(uptime, 0)
     except Exception:
-        return None
+        return get_uptime_from_interfaces(interfaces)
 
 
 def _as_int(value: Any, default: int = 0) -> int:
@@ -181,6 +196,17 @@ def get_device_statistics(device_id: str, interval: str = "hour"):
     )
     if isinstance(stats, dict):
         return stats
+    return None
+
+
+def get_device_interfaces(device_id: str):
+    if not device_id:
+        return None
+    interfaces = scrape(
+        cfg.controller_url + f"/devices/{device_id}/interfaces", cfg.token
+    )
+    if isinstance(interfaces, list):
+        return interfaces
     return None
 
 
@@ -233,6 +259,29 @@ def get_traffic_bytes(stats: Any) -> Tuple[Optional[int], Optional[int]]:
     )
 
 
+def get_traffic_bytes_from_overview(json: Any) -> Tuple[Optional[int], Optional[int]]:
+    """returns traffic byte counters from device overview when available"""
+    overview = json.get("overview", {}) if isinstance(json, dict) else {}
+
+    tx_raw = overview.get("txBytes")
+    rx_raw = overview.get("rxBytes")
+
+    tx = None
+    rx = None
+
+    if tx_raw is not None:
+        tx_value = _as_int(tx_raw, -1)
+        if tx_value >= 0:
+            tx = tx_value
+
+    if rx_raw is not None:
+        rx_value = _as_int(rx_raw, -1)
+        if rx_value >= 0:
+            rx = rx_value
+
+    return tx, rx
+
+
 def get_loadavg(json, stats: Any = None):
     """returns a pseudo loadavg in range 0..1"""
     cpu = get_cpu_percent(json)
@@ -252,6 +301,46 @@ def get_loadavg(json, stats: Any = None):
     if latest is None:
         return None
     return round(max(0.0, min(latest, 1.0)), 3)
+
+
+def get_uptime_from_interfaces(interfaces: Any) -> Optional[int]:
+    if not isinstance(interfaces, list):
+        return None
+
+    # Prefer wireless/main interfaces where UISP commonly exposes serviceUptime.
+    preferred = sorted(
+        interfaces,
+        key=lambda i: (
+            0
+            if isinstance(i, dict)
+            and i.get("identification", {}).get("name") in ("main", "wlan0", "wlan")
+            else 1
+        ),
+    )
+
+    for interface in preferred:
+        if not isinstance(interface, dict):
+            continue
+
+        wireless = interface.get("wireless")
+        if not isinstance(wireless, dict):
+            continue
+
+        uptime = wireless.get("serviceUptime")
+        if uptime is None:
+            continue
+
+        uptime = _as_int(uptime, 0)
+        if uptime <= 0:
+            continue
+
+        if uptime > 10 * 365 * 24 * 60 * 60:
+            uptime = int(uptime / 1000)
+        if uptime > 5 * 365 * 24 * 60 * 60:
+            return None
+        return uptime
+
+    return None
 
 
 def get_cpu_percent(json):
@@ -293,7 +382,14 @@ def get_infos():
             if "Router" not in hostname:
                 device_id = get_device_id(device)
                 stats = get_device_statistics(device_id, "hour") if device_id else None
+                interfaces = get_device_interfaces(device_id) if device_id else None
                 tx_bytes, rx_bytes = get_traffic_bytes(stats)
+                if tx_bytes is None or rx_bytes is None:
+                    tx_overview, rx_overview = get_traffic_bytes_from_overview(device)
+                    if tx_bytes is None:
+                        tx_bytes = tx_overview
+                    if rx_bytes is None:
+                        rx_bytes = rx_overview
 
                 aps.accesspoints.append(
                     Accesspoint(
@@ -305,7 +401,8 @@ def get_infos():
                         domain_code="uisp_respondd_fallback",
                         firmware=get_firmware(device),
                         model=get_model(device),
-                        uptime=get_uptime(device),
+                        device_type=get_device_type(device),
+                        uptime=get_uptime(device, interfaces),
                         cpu=get_cpu_percent(device),
                         ram_used_percent=get_ram_used_percent(device),
                         loadavg=get_loadavg(device, stats),
