@@ -1,5 +1,5 @@
 from requests import get as rget
-from typing import List, Any
+from typing import List, Any, Optional
 import uisp_respondd.config as config
 
 
@@ -31,9 +31,10 @@ class Accesspoint:
     domain_code: str
     firmware: str
     model: str
-    uptime: int
-    cpu: int
-    ram_used_percent: int
+    uptime: Optional[int]
+    cpu: Optional[int]
+    ram_used_percent: Optional[int]
+    loadavg: Optional[float]
 
 
 @dataclasses.dataclass
@@ -94,17 +95,31 @@ def get_apDevice(json):
 def get_firmware(json):
     """returns the firmware version"""
     try:
-        return json["identification"]["firmwareVersion"]
+        fw = json.get("identification", {}).get("firmwareVersion")
+        if fw:
+            return str(fw)
+        return "unknown"
     except Exception:
-        return ""
+        return "unknown"
 
 
 def get_model(json):
     """returns the model"""
     try:
-        return json["identification"]["model"]
+        ident = json.get("identification", {})
+        model = ident.get("model")
+        model_name = ident.get("modelName")
+        dev_type = ident.get("type")
+
+        if model and str(model).upper() != "UNKNOWN":
+            return str(model)
+        if model_name and str(model_name).lower() != "unknown":
+            return str(model_name)
+        if dev_type:
+            return str(dev_type)
+        return "UNKNOWN"
     except Exception:
-        return ""
+        return "UNKNOWN"
 
 
 def get_uptime(json):
@@ -115,18 +130,18 @@ def get_uptime(json):
         if uptime is None:
             uptime = overview.get("serviceUptime")
         if uptime is None:
-            return 0
+            return None
 
         uptime = _as_int(uptime, 0)
         if uptime <= 0:
-            return 0
+            return None
 
         # UISP instances may report uptime in ms. Convert when value is implausibly high for seconds.
         if uptime > 10 * 365 * 24 * 60 * 60:
             uptime = int(uptime / 1000)
         return max(uptime, 0)
     except Exception:
-        return 0
+        return None
 
 
 def _as_int(value: Any, default: int = 0) -> int:
@@ -138,15 +153,78 @@ def _as_int(value: Any, default: int = 0) -> int:
         return default
 
 
+def _as_float(value: Any, default: float = 0.0) -> float:
+    try:
+        if value is None:
+            return default
+        return float(value)
+    except Exception:
+        return default
+
+
+def get_device_id(json):
+    try:
+        return json.get("identification", {}).get("id")
+    except Exception:
+        return None
+
+
+def get_device_statistics(device_id: str, interval: str = "hour"):
+    if not device_id:
+        return None
+    stats = scrape(
+        cfg.controller_url + f"/devices/{device_id}/statistics?interval={interval}",
+        cfg.token,
+    )
+    if isinstance(stats, dict):
+        return stats
+    return None
+
+
+def _get_latest_series_value(series: Any) -> Optional[float]:
+    if not isinstance(series, list) or not series:
+        return None
+    for item in reversed(series):
+        if isinstance(item, dict) and item.get("y") is not None:
+            return _as_float(item.get("y"), 0.0)
+    return None
+
+
+def get_loadavg(json):
+    """returns a pseudo loadavg in range 0..1"""
+    cpu = get_cpu_percent(json)
+    if cpu is not None:
+        return round(cpu / 100.0, 3)
+
+    # Fallback for blackBox devices: try UISP statistics endpoint.
+    device_id = get_device_id(json)
+    stats = get_device_statistics(device_id, "hour")
+    if not stats:
+        return None
+
+    utilization = stats.get("utilization", {})
+    avg_series = utilization.get("avg") if isinstance(utilization, dict) else None
+    latest = _get_latest_series_value(avg_series)
+    if latest is None:
+        return None
+    return round(max(0.0, min(latest, 1.0)), 3)
+
+
 def get_cpu_percent(json):
     """returns CPU usage in percent from 0..100"""
-    value = _as_int(json.get("overview", {}).get("cpu"), 0)
+    raw = json.get("overview", {}).get("cpu")
+    if raw is None:
+        return None
+    value = _as_int(raw, 0)
     return max(0, min(value, 100))
 
 
 def get_ram_used_percent(json):
     """returns RAM usage in percent from 0..100"""
-    value = _as_int(json.get("overview", {}).get("ram"), 0)
+    raw = json.get("overview", {}).get("ram")
+    if raw is None:
+        return None
+    value = _as_int(raw, 0)
     return max(0, min(value, 100))
 
 
@@ -169,6 +247,7 @@ def get_infos():
                         uptime=get_uptime(device),
                         cpu=get_cpu_percent(device),
                         ram_used_percent=get_ram_used_percent(device),
+                        loadavg=get_loadavg(device),
                     )
                 )
     return aps
