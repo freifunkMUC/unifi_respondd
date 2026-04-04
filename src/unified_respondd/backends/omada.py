@@ -121,6 +121,88 @@ def scrape(url):
         logger.error("Error: %s" % (ex))
 
 
+def _to_float(value, default=0.0):
+    if value is None:
+        return default
+
+    if isinstance(value, str):
+        value = value.strip().split(" ")[0].replace(",", ".")
+
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return default
+
+
+def _to_int(value, default=0):
+    if value is None:
+        return default
+
+    try:
+        return int(float(value))
+    except (TypeError, ValueError):
+        return default
+
+
+def _extract_loadavg(ap, more_ap_infos):
+    sys_stats = ap.get("sys_stats", {})
+    candidates = [
+        sys_stats.get("loadavg_1"),
+        sys_stats.get("loadavg1"),
+        ap.get("loadavg_1"),
+        ap.get("loadavg1"),
+        more_ap_infos.get("loadavg_1"),
+        more_ap_infos.get("loadavg1"),
+    ]
+
+    for candidate in candidates:
+        if candidate is not None:
+            return _to_float(candidate, 0.0)
+
+    # Some Omada versions only expose CPU utilization; use a scaled value as fallback.
+    cpu_util = _to_float(more_ap_infos.get("cpuUtil"), -1.0)
+    if 0.0 <= cpu_util <= 100.0:
+        return cpu_util / 100.0
+
+    return 0.0
+
+
+def _extract_memory(ap, more_ap_infos):
+    sys_stats = ap.get("sys_stats", {})
+
+    mem_used = _to_int(
+        sys_stats.get("mem_used", ap.get("mem_used", more_ap_infos.get("memUsed"))),
+        0,
+    )
+    mem_buffer = _to_int(
+        sys_stats.get(
+            "mem_buffer", ap.get("mem_buffer", more_ap_infos.get("memBuffer", 0))
+        ),
+        0,
+    )
+    mem_total = _to_int(
+        sys_stats.get(
+            "mem_total", ap.get("mem_total", more_ap_infos.get("memTotal", 0))
+        ),
+        0,
+    )
+
+    if mem_total <= 0:
+        mem_util = _to_float(more_ap_infos.get("memUtil"), -1.0)
+        if 0.0 <= mem_util <= 100.0:
+            mem_total = 100 * 1024
+            mem_used = int(mem_total * (mem_util / 100.0))
+            mem_buffer = 0
+
+    if mem_total <= 0:
+        mem_total = 100 * 1024
+
+    mem_used = min(max(mem_used, 0), mem_total)
+    mem_buffer = max(mem_buffer, 0)
+
+    return mem_used, mem_buffer, mem_total
+
+
 def get_ap_frequency(channelData: str) -> Optional[int]:
     if channelData == "N/A":
         return None
@@ -209,8 +291,7 @@ def get_infos():
                     tx = tx + radioTraffic5g.get("tx", 0)
                     rx = rx + radioTraffic5g.get("rx", 0)
 
-                moreAPInfos.get("cpuUtil")  # TODO: cpuUtil in Prozent
-                moreAPInfos.get("memUtil")  # TODO: memUtil in Prozent
+                mem_used, mem_buffer, mem_total = _extract_memory(ap, moreAPInfos)
 
                 frequency24 = None
                 wp2g = moreAPInfos.get("wp2g", None)
@@ -287,12 +368,10 @@ def get_infos():
                             firmware=ap.get("version", None),
                             uptime=moreAPInfos.get("uptimeLong", None),
                             contact=snmp.get("contact", None),
-                            load_avg=float(
-                                ap.get("sys_stats", {}).get("loadavg_1", 0.0)
-                            ),
-                            mem_used=ap.get("sys_stats", {}).get("mem_used", 0),
-                            mem_buffer=ap.get("sys_stats", {}).get("mem_buffer", 0),
-                            mem_total=ap.get("sys_stats", {}).get("mem_total", 0),
+                            load_avg=_extract_loadavg(ap, moreAPInfos),
+                            mem_used=mem_used,
+                            mem_buffer=mem_buffer,
+                            mem_total=mem_total,
                             tx_bytes=tx,
                             rx_bytes=rx,
                             gateway=offloader.get("gateway", None),
