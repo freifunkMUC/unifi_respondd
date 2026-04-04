@@ -1,5 +1,5 @@
 from requests import get as rget
-from typing import List
+from typing import List, Any
 import uisp_respondd.config as config
 
 
@@ -31,7 +31,9 @@ class Accesspoint:
     domain_code: str
     firmware: str
     model: str
-    uptime: str
+    uptime: int
+    cpu: int
+    ram_used_percent: int
 
 
 @dataclasses.dataclass
@@ -108,9 +110,38 @@ def get_model(json):
 def get_uptime(json):
     """returns the uptime"""
     try:
-        return json["overview"]["uptime"]
+        uptime = json.get("overview", {}).get("uptime")
+        if uptime is None:
+            return 0
+
+        uptime = int(uptime)
+        # UISP instances may report uptime in ms. Convert when value is implausibly high for seconds.
+        if uptime > 10 * 365 * 24 * 60 * 60:
+            uptime = int(uptime / 1000)
+        return max(uptime, 0)
     except Exception:
         return 0
+
+
+def _as_int(value: Any, default: int = 0) -> int:
+    try:
+        if value is None:
+            return default
+        return int(value)
+    except Exception:
+        return default
+
+
+def get_cpu_percent(json):
+    """returns CPU usage in percent from 0..100"""
+    value = _as_int(json.get("overview", {}).get("cpu"), 0)
+    return max(0, min(value, 100))
+
+
+def get_ram_used_percent(json):
+    """returns RAM usage in percent from 0..100"""
+    value = _as_int(json.get("overview", {}).get("ram"), 0)
+    return max(0, min(value, 100))
 
 
 def get_infos():
@@ -130,6 +161,8 @@ def get_infos():
                         firmware=get_firmware(device),
                         model=get_model(device),
                         uptime=get_uptime(device),
+                        cpu=get_cpu_percent(device),
+                        ram_used_percent=get_ram_used_percent(device),
                     )
                 )
     return aps
