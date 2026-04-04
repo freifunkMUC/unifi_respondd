@@ -227,7 +227,10 @@ def get_traffic_bytes(stats: Any) -> Tuple[Optional[int], Optional[int]]:
                 total_rx += max(0.0, rx_value)
                 rx_found = True
 
-    return (int(round(total_tx)) if tx_found else None, int(round(total_rx)) if rx_found else None)
+    return (
+        int(round(total_tx)) if tx_found else None,
+        int(round(total_rx)) if rx_found else None,
+    )
 
 
 def get_loadavg(json, stats: Any = None):
