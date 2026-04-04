@@ -136,15 +136,20 @@ def get_device_type(json):
         return "unknown"
 
 
-def get_uptime(json, interfaces: Any = None):
-    """returns the uptime"""
+def get_uptime(json, interfaces: Any = None, stations: Any = None):
+    """returns the uptime from overview, interfaces (serviceUptime), or P2P link stations"""
     try:
         overview = json.get("overview", {})
         uptime = overview.get("uptime")
         if uptime is None:
             uptime = overview.get("serviceUptime")
         if uptime is None:
-            return get_uptime_from_interfaces(interfaces)
+            uptime = get_uptime_from_interfaces(interfaces)
+        if uptime is None:
+            uptime = get_uptime_from_station(stations)
+
+        if uptime is None:
+            return None
 
         uptime = _as_int(uptime, 0)
         if uptime <= 0:
@@ -207,6 +212,22 @@ def get_device_interfaces(device_id: str):
     )
     if isinstance(interfaces, list):
         return interfaces
+    return None
+
+
+def get_device_stations(device_id: str):
+    """Get P2P link stations for airFiber/wireless devices.
+    
+    Returns list of station objects with uptime, rxBytes, txBytes, signal, etc.
+    These are remote link endpoints (connections to other devices).
+    """
+    if not device_id:
+        return None
+    stations = scrape(
+        cfg.controller_url + f"/devices/aircubes/{device_id}/stations", cfg.token
+    )
+    if isinstance(stations, list):
+        return stations
     return None
 
 
@@ -343,6 +364,51 @@ def get_uptime_from_interfaces(interfaces: Any) -> Optional[int]:
     return None
 
 
+def get_uptime_from_station(stations: Any) -> Optional[int]:
+    """Extract uptime from primary P2P link station.
+    
+    Station uptime is already in seconds (unlike overview.uptime which may be in ms).
+    """
+    if not isinstance(stations, list) or not stations:
+        return None
+    
+    # Take first active station
+    station = stations[0]
+    if not isinstance(station, dict):
+        return None
+    
+    uptime_sec = _as_int(station.get("uptime"), 0)
+    if uptime_sec <= 0:
+        return None
+    
+    # Reject implausible values (>5 years)
+    if uptime_sec > 5 * 365 * 24 * 60 * 60:
+        return None
+        
+    return uptime_sec
+
+
+def get_traffic_bytes_from_station(stations: Any) -> Tuple[Optional[int], Optional[int]]:
+    """Extract rxBytes/txBytes from primary P2P link station."""
+    if not isinstance(stations, list) or not stations:
+        return None, None
+    
+    station = stations[0]
+    if not isinstance(station, dict):
+        return None, None
+    
+    tx = _as_int(station.get("txBytes"), -1) if station.get("txBytes") is not None else None
+    rx = _as_int(station.get("rxBytes"), -1) if station.get("rxBytes") is not None else None
+    return tx, rx
+
+
+def get_link_count(stations: Any) -> Optional[int]:
+    """Count number of active P2P links."""
+    if not isinstance(stations, list):
+        return None
+    return len(stations) if stations else None
+
+
 def get_cpu_percent(json):
     """returns CPU usage in percent from 0..100"""
     raw = json.get("overview", {}).get("cpu")
@@ -381,15 +447,32 @@ def get_infos():
             hostname = get_hostname(device)
             if "Router" not in hostname:
                 device_id = get_device_id(device)
+                device_type = get_device_type(device)
+                
+                # Fetch additional data sources
                 stats = get_device_statistics(device_id, "hour") if device_id else None
                 interfaces = get_device_interfaces(device_id) if device_id else None
+                stations = get_device_stations(device_id) if device_id else None
+                
+                # Multi-tier fallback for traffic bytes
                 tx_bytes, rx_bytes = get_traffic_bytes(stats)
+                if tx_bytes is None or rx_bytes is None:
+                    tx_station, rx_station = get_traffic_bytes_from_station(stations)
+                    if tx_bytes is None:
+                        tx_bytes = tx_station
+                    if rx_bytes is None:
+                        rx_bytes = rx_station
                 if tx_bytes is None or rx_bytes is None:
                     tx_overview, rx_overview = get_traffic_bytes_from_overview(device)
                     if tx_bytes is None:
                         tx_bytes = tx_overview
                     if rx_bytes is None:
                         rx_bytes = rx_overview
+
+                # Multi-tier fallback for client count: use link count for P2P devices
+                client_total = get_client_total(device)
+                if client_total is None and stations is not None:
+                    client_total = get_link_count(stations)
 
                 aps.accesspoints.append(
                     Accesspoint(
@@ -401,14 +484,14 @@ def get_infos():
                         domain_code="uisp_respondd_fallback",
                         firmware=get_firmware(device),
                         model=get_model(device),
-                        device_type=get_device_type(device),
-                        uptime=get_uptime(device, interfaces),
+                        device_type=device_type,
+                        uptime=get_uptime(device, interfaces, stations),
                         cpu=get_cpu_percent(device),
                         ram_used_percent=get_ram_used_percent(device),
                         loadavg=get_loadavg(device, stats),
                         tx_bytes=tx_bytes,
                         rx_bytes=rx_bytes,
-                        client_total=get_client_total(device),
+                        client_total=client_total,
                     )
                 )
     return aps
