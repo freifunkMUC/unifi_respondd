@@ -136,6 +136,17 @@ def get_device_type(json):
         return "unknown"
 
 
+def get_device_status(json):
+    """Extract device status: active, disconnected, unauthorized, disabled, unknown"""
+    try:
+        status = json.get("overview", {}).get("status")
+        if status:
+            return str(status).lower()
+        return "unknown"
+    except Exception:
+        return "unknown"
+
+
 def get_uptime(json, interfaces: Any = None, stations: Any = None):
     """returns the uptime from overview, interfaces (serviceUptime), or P2P link stations"""
     try:
@@ -217,7 +228,7 @@ def get_device_interfaces(device_id: str):
 
 def get_device_stations(device_id: str):
     """Get P2P link stations for airFiber/wireless devices.
-    
+
     Returns list of station objects with uptime, rxBytes, txBytes, signal, etc.
     These are remote link endpoints (connections to other devices).
     """
@@ -366,39 +377,49 @@ def get_uptime_from_interfaces(interfaces: Any) -> Optional[int]:
 
 def get_uptime_from_station(stations: Any) -> Optional[int]:
     """Extract uptime from primary P2P link station.
-    
+
     Station uptime is already in seconds (unlike overview.uptime which may be in ms).
     """
     if not isinstance(stations, list) or not stations:
         return None
-    
+
     # Take first active station
     station = stations[0]
     if not isinstance(station, dict):
         return None
-    
+
     uptime_sec = _as_int(station.get("uptime"), 0)
     if uptime_sec <= 0:
         return None
-    
+
     # Reject implausible values (>5 years)
     if uptime_sec > 5 * 365 * 24 * 60 * 60:
         return None
-        
+
     return uptime_sec
 
 
-def get_traffic_bytes_from_station(stations: Any) -> Tuple[Optional[int], Optional[int]]:
+def get_traffic_bytes_from_station(
+    stations: Any,
+) -> Tuple[Optional[int], Optional[int]]:
     """Extract rxBytes/txBytes from primary P2P link station."""
     if not isinstance(stations, list) or not stations:
         return None, None
-    
+
     station = stations[0]
     if not isinstance(station, dict):
         return None, None
-    
-    tx = _as_int(station.get("txBytes"), -1) if station.get("txBytes") is not None else None
-    rx = _as_int(station.get("rxBytes"), -1) if station.get("rxBytes") is not None else None
+
+    tx = (
+        _as_int(station.get("txBytes"), -1)
+        if station.get("txBytes") is not None
+        else None
+    )
+    rx = (
+        _as_int(station.get("rxBytes"), -1)
+        if station.get("rxBytes") is not None
+        else None
+    )
     return tx, rx
 
 
@@ -446,14 +467,19 @@ def get_infos():
         for device in devices:
             hostname = get_hostname(device)
             if "Router" not in hostname:
+                # Skip disconnected devices
+                device_status = get_device_status(device)
+                if device_status == "disconnected":
+                    continue
+
                 device_id = get_device_id(device)
                 device_type = get_device_type(device)
-                
+
                 # Fetch additional data sources
                 stats = get_device_statistics(device_id, "hour") if device_id else None
                 interfaces = get_device_interfaces(device_id) if device_id else None
                 stations = get_device_stations(device_id) if device_id else None
-                
+
                 # Multi-tier fallback for traffic bytes
                 tx_bytes, rx_bytes = get_traffic_bytes(stats)
                 if tx_bytes is None or rx_bytes is None:
