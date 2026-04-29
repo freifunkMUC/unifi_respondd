@@ -295,12 +295,12 @@ def get_infos():
 
                 frequency24 = None
                 wp2g = moreAPInfos.get("wp2g", None)
-                if wp2g.get("actualChannel", None) is not None:
+                if wp2g is not None and wp2g.get("actualChannel", None) is not None:
                     frequency24 = get_ap_frequency(wp2g.get("actualChannel"))
 
                 frequency5 = None
                 wp5g = moreAPInfos.get("wp5g", None)
-                if wp5g.get("actualChannel", None) is not None:
+                if wp5g is not None and wp5g.get("actualChannel", None) is not None:
                     frequency5 = get_ap_frequency(wp5g.get("actualChannel"))
 
                 neighbour_macs = []
