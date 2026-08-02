@@ -12,7 +12,6 @@ on:
 permissions:
   contents: read
   packages: write
-  id-token: write
 
 jobs:
   build:
@@ -47,12 +46,14 @@ jobs:
       - name: Build distributions
         run: python -m build --sdist --wheel --outdir dist/
 
-  publish:
+  publish-testpypi:
     runs-on: ubuntu-latest
-    name: Publish Python Distributions
+    name: Publish to TestPyPI
     if: github.event_name == 'push'
     needs:
       - build
+    permissions:
+      id-token: write # required for trusted publishing
     steps:
       - name: Checkout repository
         uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
@@ -82,11 +83,43 @@ jobs:
         uses: pypa/gh-action-pypi-publish@dc37677b2e1c63e2034f94d8a5b11f265b73ba33 # v1.14.2
         with:
           repository-url: https://test.pypi.org/legacy/
-          attestations: true
+          attestations: false
+
+  publish-pypi:
+    runs-on: ubuntu-latest
+    name: Publish to PyPI
+    # only publish to PyPI when a tag was created
+    if: contains(github.ref, 'refs/tags')
+    needs:
+      - build
+    permissions:
+      id-token: write # required for trusted publishing
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          fetch-depth: 0 # required for git describe
+
+      - name: Set up Python
+        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v 6.3.0
+        with:
+          python-version: 3.13
+      - name: Display Python version
+        run: python -c "import sys; print(sys.version)"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip setuptools wheel build
+
+      - name: Get version from git tag
+        run: |
+          sed -i s/VERSION/$(git describe --always --tags | sed 's/-\([0-9]\+\)-\(g[a-f0-9]\+\)$/.dev\1+\2/')/g setup.py
+          cat setup.py
+
+      - name: Build distributions
+        run: python -m build --sdist --wheel --outdir dist/
 
       - name: Publish to PyPI
-        # only publish to PyPi when a tag was created
-        if: contains(github.ref, 'refs/tags')
         uses: pypa/gh-action-pypi-publish@dc37677b2e1c63e2034f94d8a5b11f265b73ba33 # v1.14.2
         with:
           attestations: true
