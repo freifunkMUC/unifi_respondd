@@ -40,7 +40,7 @@ jobs:
 
       - name: Get version from git tag
         run: |
-          sed -i s/VERSION/$(git describe --always --tags | sed 's/-\([0-9]\+\)-\(g[a-f0-9]\+\)$/.dev\1+\2/')/g setup.py
+          sed -i s/VERSION/$(git describe --always --tags | sed 's/-\([0-9]\+\)-g[a-f0-9]\+$/.dev\1/')/g setup.py
           cat setup.py
 
       - name: Build distributions
@@ -73,7 +73,7 @@ jobs:
 
       - name: Get version from git tag
         run: |
-          sed -i s/VERSION/$(git describe --always --tags | sed 's/-\([0-9]\+\)-\(g[a-f0-9]\+\)$/.dev\1+\2/')/g setup.py
+          sed -i s/VERSION/$(git describe --always --tags | sed 's/-\([0-9]\+\)-g[a-f0-9]\+$/.dev\1/')/g setup.py
           cat setup.py
 
       - name: Build distributions
@@ -113,7 +113,7 @@ jobs:
 
       - name: Get version from git tag
         run: |
-          sed -i s/VERSION/$(git describe --always --tags | sed 's/-\([0-9]\+\)-\(g[a-f0-9]\+\)$/.dev\1+\2/')/g setup.py
+          sed -i s/VERSION/$(git describe --always --tags | sed 's/-\([0-9]\+\)-g[a-f0-9]\+$/.dev\1/')/g setup.py
           cat setup.py
 
       - name: Build distributions
