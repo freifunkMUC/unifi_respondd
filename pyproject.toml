@@ -1,5 +1,8 @@
 [tool.ruff]
 line-length = 120
+# Vendored third-party code (MIT licensed, kept byte-for-byte identical to
+# upstream), not held to this project's lint rules.
+exclude = ["unifi_respondd/vendors/omada_api"]
 
 [tool.ruff.lint]
 # Enable pycodestyle (E, W), pyflakes (F), and isort (I)

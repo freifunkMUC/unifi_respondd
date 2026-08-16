@@ -20,21 +20,65 @@ class ConfigFileNotFoundError(Error):
 
 
 @dataclasses.dataclass
-class Config:
-    """A representation of the configuration file.
+class ControllerConfig:
+    """A representation of one configured controller instance.
     Attributes:
-        controller_url: The unifi controller URL.
-        controller_port: The unifi Controller port.
-        username: The username for unifi controller.
-        password: The password for unifi controller.
+        type: The vendor registry key selecting the client implementation (e.g. "unifi", "omada").
+        name: A unique label for this controller, used in logs.
+        controller_url: The controller URL.
+        controller_port: The controller port. UniFi-specific; ignored by vendors that embed the port in controller_url.
+        username: The username for the controller.
+        password: The password for the controller.
+        ssid_regex: The regex used to match Freifunk SSIDs on this controller.
+        offloader_mac: A mapping of site name to offloader MAC address.
+        ssl_verify: Whether to verify the controller's TLS certificate.
+        version: The controller API version. UniFi-specific; ignored by other vendors.
     """
 
+    type: str
+    name: str
     controller_url: str
-    controller_port: int
     username: str
     password: str
     ssid_regex: str
     offloader_mac: Dict[str, str]
+    controller_port: Optional[int] = None
+    ssl_verify: bool = True
+    version: str = "v5"
+
+    @classmethod
+    def from_dict(cls, cfg: Dict[str, Any]) -> "ControllerConfig":
+        """Creates a ControllerConfig object from a configuration dict.
+        Arguments:
+            cfg: One entry of the configuration file's `controllers` list.
+        Returns:
+            A ControllerConfig object.
+        """
+
+        return cls(
+            type=cfg["type"],
+            name=cfg.get("name", cfg["controller_url"]),
+            controller_url=cfg["controller_url"],
+            controller_port=cfg.get("controller_port"),
+            username=cfg["username"],
+            password=cfg["password"],
+            ssid_regex=cfg["ssid_regex"],
+            offloader_mac=cfg["offloader_mac"],
+            ssl_verify=cfg.get("ssl_verify", True),
+            version=cfg.get("version", "v5"),
+        )
+
+
+@dataclasses.dataclass
+class Config:
+    """A representation of the configuration file.
+    Attributes:
+        controllers: The list of configured controller instances.
+        nodelist: The URL of the meshviewer.json map, shared across all controllers.
+        fallback_domain: The default domain code used when a controller/offloader has none.
+    """
+
+    controllers: List[ControllerConfig]
     nodelist: str
     fallback_domain: str
 
@@ -46,11 +90,8 @@ class Config:
     verbose: bool = False
     multicast_enabled: bool = True
 
-    version: str = "v5"
-    ssl_verify: bool = True
-
     @classmethod
-    def from_dict(cls, cfg: Dict[str, str]) -> "Config":
+    def from_dict(cls, cfg: Dict[str, Any]) -> "Config":
         """Creates a Config object from a configuration file.
         Arguments:
             cfg: The configuration file as a dict.
@@ -58,17 +99,34 @@ class Config:
             A Config object.
         """
 
+        if "controllers" in cfg:
+            controllers = [ControllerConfig.from_dict(c) for c in cfg["controllers"]]
+        else:
+            # Legacy flat single-UniFi-controller format (pre-multi-controller
+            # unifi_respondd.yaml). Synthesized into a one-entry controllers
+            # list so every downstream consumer only ever deals with the new
+            # shape.
+            controllers = [
+                ControllerConfig.from_dict(
+                    {
+                        "type": "unifi",
+                        "name": cfg["controller_url"],
+                        "controller_url": cfg["controller_url"],
+                        "controller_port": cfg["controller_port"],
+                        "username": cfg["username"],
+                        "password": cfg["password"],
+                        "ssid_regex": cfg["ssid_regex"],
+                        "offloader_mac": cfg["offloader_mac"],
+                        "version": cfg["version"],
+                        "ssl_verify": cfg["ssl_verify"],
+                    }
+                )
+            ]
+
         return cls(
-            controller_url=cfg["controller_url"],
-            controller_port=cfg["controller_port"],
-            username=cfg["username"],
-            password=cfg["password"],
-            ssid_regex=cfg["ssid_regex"],
-            offloader_mac=cfg["offloader_mac"],
+            controllers=controllers,
             nodelist=cfg["nodelist"],
             fallback_domain=cfg.get("fallback_domain", "unifi_respondd_fallback"),
-            version=cfg["version"],
-            ssl_verify=cfg["ssl_verify"],
             multicast_enabled=cfg["multicast_enabled"],
             multicast_address=cfg["multicast_address"],
             multicast_port=cfg["multicast_port"],
