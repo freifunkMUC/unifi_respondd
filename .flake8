@@ -4,3 +4,7 @@ ignore=
     E501,
     # line break before binary operator (conflicts with black and PEP 8)
     W503
+exclude=
+    # vendored third-party code (MIT licensed, kept byte-for-byte identical
+    # to upstream), not held to this project's lint rules
+    unifi_respondd/vendors/omada_api

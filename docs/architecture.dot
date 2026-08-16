@@ -7,12 +7,14 @@ digraph G {
 
   bgcolor=transparent;
 
-  subgraph unifi_client {
+  subgraph vendors {
     style=filled;
     color=lightgrey;
     style="dotted"
     node [style=filled,color="#d8b365"];
-    unifi_client [label="*unifi_client*"];
+    aggregator [label="*aggregator*"];
+    unifi_client [label="*vendors/unifi*"];
+    omada_client [label="*vendors/omada*"];
     fontsize = 20;
   }
 
@@ -36,14 +38,17 @@ digraph G {
 
   yanic [shape=Mdiamond];
   respondd [shape=Mdiamond]
-  
+
+  aggregator -> unifi_client;
+  aggregator -> omada_client;
   unifi_client -> unifi_controller [label="RESTFul API"];
+  omada_client -> omada_controller [label="RESTFul API"];
   respondd_client -> multicast [label="Subscribe"];
   respondd_client -> unicast [label="Send per interval / On multicast request"];
   unicast -> yanic [label="Receive"]
   yanic -> multicast [label="Request metrics"]
   respondd -> respondd_client
-  respondd -> unifi_client
-  {rank=same unifi_controller multicast unicast}
-  {rank=same unifi_client respondd_client}
+  respondd -> aggregator
+  {rank=same unifi_controller omada_controller multicast unicast}
+  {rank=same aggregator respondd_client}
 }

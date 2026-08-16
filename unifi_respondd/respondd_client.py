@@ -10,7 +10,7 @@ from typing import Dict, List
 
 from dataclasses_json import dataclass_json
 
-from unifi_respondd import logger, unifi_client
+from unifi_respondd import aggregator, logger
 
 
 @dataclasses.dataclass
@@ -270,11 +270,13 @@ class ResponddClient:
         """This method returns the node information of all APs."""
         aps = self._aps
         nodes = []
-        for ap in aps.accesspoints:
+        for ap in aps:
             nodes.append(
                 NodeInfo(
                     software=SoftwareInfo(
-                        firmware=FirmwareInfo(base="UniFi", release=ap.firmware)
+                        firmware=FirmwareInfo(
+                            base=ap.firmware_base, release=ap.firmware
+                        )
                     ),
                     hostname=ap.name,
                     node_id=ap.mac.replace(":", ""),
@@ -292,42 +294,19 @@ class ResponddClient:
             )
         return nodes
 
-    @staticmethod
-    def frequency_from_channel(channel):
-        if channel >= 36:
-            return 5000 + (channel) * 5
-        else:
-            if channel == 14:
-                return 2484
-            elif channel < 14:
-                return 2407 + (channel) * 5
-
     def getStatistics(self):
         """This method returns the statistics information of all APs."""
         aps = self._aps
         statistics = []
-        for ap in aps.accesspoints:
-            wirelessinfos = []
-
-            if ap.channel5:
-                frequency5 = self.frequency_from_channel(ap.channel5)
-                wirelessinfos.append(
-                    WirelessInfo(
-                        frequency=frequency5,
-                        rx=ap.rx_bytes5,
-                        tx=ap.tx_bytes5,
-                    )
+        for ap in aps:
+            wirelessinfos = [
+                WirelessInfo(
+                    frequency=band.frequency,
+                    rx=band.rx_bytes,
+                    tx=band.tx_bytes,
                 )
-
-            if ap.channel24:
-                frequency24 = self.frequency_from_channel(ap.channel24)
-                wirelessinfos.append(
-                    WirelessInfo(
-                        frequency=frequency24,
-                        rx=ap.rx_bytes5,
-                        tx=ap.tx_bytes5,
-                    )
-                )
+                for band in ap.wireless_bands
+            ]
 
             statistics.append(
                 StatisticsInfo(
@@ -361,7 +340,7 @@ class ResponddClient:
         """This method returns the neighbour information of all APs."""
         aps = self._aps
         neighbours = []
-        for ap in aps.accesspoints:
+        for ap in aps:
             nbs = {}
             for neighbour_mac in ap.neighbour_macs:
                 if neighbour_mac is not None:
@@ -413,9 +392,7 @@ class ResponddClient:
             else:
                 self.sendUnicast()
             self._timeStart = time.time()
-            self._aps = unifi_client.get_infos()
-            if self._aps is None:
-                continue
+            self._aps = aggregator.get_infos(self._config)
             if msgSplit[0] == "GET":  # multi_request
                 for request in msgSplit[1:]:
                     responseStruct[request] = self.buildStruct(request)

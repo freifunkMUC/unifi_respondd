@@ -1,3 +1,6 @@
+# Legacy / single-controller format (still fully supported). Implicitly a
+# single UniFi controller -- no `type` key needed, `controllers:` is
+# synthesized internally.
 controller_url: unifi.lan
 controller_port: 8443
 username: ubnt
@@ -30,3 +33,69 @@ logging_config:
       level: DEBUG
     version: 1
 fallback_domain: "unifi_respondd_fallback"  # optional
+
+---
+# Multi-controller format. Mix any number of controllers of any supported
+# type (see README.md "Supported controller types"). Each entry's `type`
+# selects the vendor client from the registry in
+# unifi_respondd/vendors/__init__.py. The keys below `controllers:` are
+# shared/global across all controllers -- one respondd process, one UDP
+# socket, one scrape of `nodelist` per cycle.
+
+controllers:
+  - type: unifi
+    name: unifi-site-a
+    controller_url: unifi-a.lan
+    controller_port: 8443
+    username: ubnt
+    password: ubnt
+    ssid_regex: .*freifunk.*
+    offloader_mac:
+      SiteNameA: 00:00:00:00:00:00
+    version: v5
+    ssl_verify: true
+
+  - type: unifi
+    name: unifi-site-b
+    controller_url: unifi-b.lan
+    controller_port: 443
+    username: ubnt2
+    password: ubnt2
+    ssid_regex: .*freifunk.*
+    offloader_mac:
+      SiteNameB: 11:11:11:11:11:11
+    version: UDMP-unifiOS
+    ssl_verify: true
+
+  - type: omada
+    name: omada-site-c
+    controller_url: https://omada.lan:8043   # port must be embedded here; controller_port is ignored for omada
+    username: omada
+    password: omada
+    ssid_regex: .*freifunk.*
+    offloader_mac:
+      SiteNameC: 22:22:22:22:22:22
+    ssl_verify: true
+
+nodelist: https://MAPURL/data/meshviewer.json
+fallback_domain: "unifi_respondd_fallback"  # optional
+multicast_enabled: false
+multicast_address: ff05::2:1001
+multicast_port: 1001
+unicast_address: fe80::68ff:94ff:fe00:1504
+unicast_port: 10001
+interface: eth0
+verbose: true
+logging_config:
+    formatters:
+      standard:
+        format: '%(asctime)s,%(msecs)d %(levelname)-8s [%(filename)s:%(lineno)d] %(message)s'
+    handlers:
+      console:
+        class: logging.StreamHandler
+        formatter: standard
+    root:
+      handlers:
+      - console
+      level: DEBUG
+    version: 1
