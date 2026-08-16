@@ -50,7 +50,7 @@ def fetch_logging_configuration():
     logging_cfg = dict()
     if os.path.isfile(UNIFI_RESPONDD_CONFIG_DEFAULT_LOCATION):
         with open(UNIFI_RESPONDD_CONFIG_DEFAULT_LOCATION) as cfg_file:
-            logging_cfg = yaml.load(cfg_file, Loader=yaml.FullLoader)
+            logging_cfg = yaml.safe_load(cfg_file)
     if logging_cfg.get("logging_config"):
         return logging_cfg.get("logging_config")
     return _LOGGING_DEFAULT_CONFIG
