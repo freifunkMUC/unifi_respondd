@@ -213,7 +213,7 @@ def get_infos():
 
                     lat, lon = 0, 0
                     neighbour_macs = []
-                    if ap.get("snmp_location", None) is not None:
+                    if ap.get("snmp_location", None):
                         try:
                             lat, lon = get_location_by_address(
                                 ap["snmp_location"], geolookup
