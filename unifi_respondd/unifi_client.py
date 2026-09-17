@@ -117,18 +117,20 @@ def get_ap_channel_usage(ssids, cfg):
     return channel5, rx_bytes5, tx_bytes5, channel24, rx_bytes24, tx_bytes24
 
 
-def get_location_by_address(address, app):
+def get_location_by_address(address, app, attempts=3):
     """This function returns latitude and longitude of a given address."""
     try:
         point = Point().from_string(address)
         return point.latitude, point.longitude
     except Exception:
+        if attempts <= 0:
+            raise
         try:
             time.sleep(1)
             geocode = app.geocode(address)
             return geocode.raw["lat"], geocode.raw["lon"]
         except Exception:
-            return get_location_by_address(address, app)
+            return get_location_by_address(address, app, attempts - 1)
 
 
 def scrape(url):
