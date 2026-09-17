@@ -175,8 +175,12 @@ def get_infos():
                 logger.error("Error: %s" % (ex))
                 continue
 
-        aps_for_site = c.get_aps()
-        clients = c.get_clients()
+        try:
+            aps_for_site = c.get_aps()
+            clients = c.get_clients()
+        except Exception as ex:
+            logger.error("Error: %s" % (ex))
+            continue
         for ap in aps_for_site:
             if (
                 ap.get("name", None) is not None
