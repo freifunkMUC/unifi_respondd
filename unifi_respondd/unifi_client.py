@@ -159,15 +159,7 @@ def get_infos():
     aps = Accesspoints(accesspoints=[])
     for site in c.get_sites():
         if cfg.version == "UDMP-unifiOS":
-            c = Controller(
-                host=cfg.controller_url,
-                username=cfg.username,
-                password=cfg.password,
-                port=cfg.controller_port,
-                version=cfg.version,
-                site_id=site["name"],
-                ssl_verify=cfg.ssl_verify,
-            )
+            c.site_id = site["name"]
         else:
             try:
                 c.switch_site(site["desc"])
