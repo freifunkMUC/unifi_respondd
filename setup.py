@@ -8,15 +8,15 @@ def read(fname):
 
 
 setup(
-    name="unifi_respondd",
+    name="unified_respondd",
     version="VERSION",
     author="Annika Wickert",
     author_email="aw@awlnx.space",
     description=("A tool to display Unifi APs on Freifunk maps."),
     license="GPLv3",
     keywords="Unifi Freifunk",
-    url="http://packages.python.org/unifi_respondd",
-    packages=["unifi_respondd"],
+    url="http://github.com/freifunkMUC/unified_respondd",
+    packages=["unified_respondd"],
     long_description=read("README.md"),
     long_description_content_type="text/markdown",
     include_package_data=True,

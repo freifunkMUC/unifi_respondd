@@ -10,7 +10,7 @@ from typing import Dict, List
 
 from dataclasses_json import dataclass_json
 
-from unifi_respondd import logger, unifi_client
+from unified_respondd import logger, unifi_client
 
 
 @dataclasses.dataclass

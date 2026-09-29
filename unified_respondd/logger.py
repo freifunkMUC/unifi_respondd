@@ -8,7 +8,7 @@ from logging import warning as warning
 
 import yaml
 
-from unifi_respondd.config import UNIFI_RESPONDD_CONFIG_DEFAULT_LOCATION
+from unified_respondd.config import UNIFI_RESPONDD_CONFIG_DEFAULT_LOCATION
 
 # Explicitly declare public API
 __all__ = [

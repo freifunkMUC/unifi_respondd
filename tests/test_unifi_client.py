@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
-"""Unit tests for unifi_respondd/unifi_client.py module."""
+"""Unit tests for unified_respondd/unifi_client.py module."""
 
 from unittest.mock import Mock, patch
 
 import pytest
 
-from unifi_respondd.unifi_client import (
+from unified_respondd.unifi_client import (
     Accesspoint,
     Accesspoints,
     get_ap_channel_usage,
@@ -352,7 +352,7 @@ class TestGetLocationByAddress:
         assert lat == pytest.approx(48.1351, rel=1e-4)
         assert lon == pytest.approx(11.5820, rel=1e-4)
 
-    @patch("unifi_respondd.unifi_client.time.sleep")
+    @patch("unified_respondd.unifi_client.time.sleep")
     def test_geocoding_fallback(self, mock_sleep):
         """Test fallback to geocoding when point parsing fails."""
         address = "Munich, Germany"
@@ -364,8 +364,8 @@ class TestGetLocationByAddress:
         assert lon == "11.5820"
         mock_sleep.assert_called_once_with(1)
 
-    @patch("unifi_respondd.unifi_client.time.sleep")
-    @patch("unifi_respondd.unifi_client.get_location_by_address")
+    @patch("unified_respondd.unifi_client.time.sleep")
+    @patch("unified_respondd.unifi_client.get_location_by_address")
     def test_geocoding_failure_recursion(self, mock_get_location, mock_sleep):
         """Test recursion when geocoding fails."""
         address = "Invalid Address"
@@ -383,7 +383,7 @@ class TestGetLocationByAddress:
 class TestScrape:
     """Test the scrape function."""
 
-    @patch("unifi_respondd.unifi_client.rget")
+    @patch("unified_respondd.unifi_client.rget")
     def test_scrape_success(self, mock_rget):
         """Test successful scraping of JSON data."""
         mock_response = Mock()
@@ -394,8 +394,8 @@ class TestScrape:
         assert result == {"nodes": [{"mac": "00:11:22:33:44:55"}]}
         mock_rget.assert_called_once_with("http://example.com/api")
 
-    @patch("unifi_respondd.unifi_client.rget")
-    @patch("unifi_respondd.unifi_client.logger.error")
+    @patch("unified_respondd.unifi_client.rget")
+    @patch("unified_respondd.unifi_client.logger.error")
     def test_scrape_failure(self, mock_logger, mock_rget):
         """Test scraping failure handling."""
         mock_rget.side_effect = Exception("Network error")
@@ -408,12 +408,12 @@ class TestScrape:
 class TestGetInfos:
     """Test the get_infos function (main integration function)."""
 
-    @patch("unifi_respondd.unifi_client.config.load_config")
-    @patch("unifi_respondd.unifi_client.config.Config.from_dict")
-    @patch("unifi_respondd.unifi_client.scrape")
-    @patch("unifi_respondd.unifi_client.Controller")
-    @patch("unifi_respondd.unifi_client.Nominatim")
-    @patch("unifi_respondd.unifi_client.logger.error")
+    @patch("unified_respondd.unifi_client.config.load_config")
+    @patch("unified_respondd.unifi_client.config.Config.from_dict")
+    @patch("unified_respondd.unifi_client.scrape")
+    @patch("unified_respondd.unifi_client.Controller")
+    @patch("unified_respondd.unifi_client.Nominatim")
+    @patch("unified_respondd.unifi_client.logger.error")
     def test_get_infos_controller_error(
         self,
         mock_logger,
@@ -435,11 +435,11 @@ class TestGetInfos:
         assert result is None
         mock_logger.assert_called()
 
-    @patch("unifi_respondd.unifi_client.config.load_config")
-    @patch("unifi_respondd.unifi_client.config.Config.from_dict")
-    @patch("unifi_respondd.unifi_client.scrape")
-    @patch("unifi_respondd.unifi_client.Controller")
-    @patch("unifi_respondd.unifi_client.Nominatim")
+    @patch("unified_respondd.unifi_client.config.load_config")
+    @patch("unified_respondd.unifi_client.config.Config.from_dict")
+    @patch("unified_respondd.unifi_client.scrape")
+    @patch("unified_respondd.unifi_client.Controller")
+    @patch("unified_respondd.unifi_client.Nominatim")
     def test_get_infos_basic_success(
         self,
         mock_nominatim,
@@ -477,14 +477,14 @@ class TestGetInfos:
         assert isinstance(result, Accesspoints)
         assert len(result.accesspoints) == 0
 
-    @patch("unifi_respondd.unifi_client.config.load_config")
-    @patch("unifi_respondd.unifi_client.config.Config.from_dict")
-    @patch("unifi_respondd.unifi_client.scrape")
-    @patch("unifi_respondd.unifi_client.Controller")
-    @patch("unifi_respondd.unifi_client.Nominatim")
-    @patch("unifi_respondd.unifi_client.get_client_count_for_ap")
-    @patch("unifi_respondd.unifi_client.get_ap_channel_usage")
-    @patch("unifi_respondd.unifi_client.get_location_by_address")
+    @patch("unified_respondd.unifi_client.config.load_config")
+    @patch("unified_respondd.unifi_client.config.Config.from_dict")
+    @patch("unified_respondd.unifi_client.scrape")
+    @patch("unified_respondd.unifi_client.Controller")
+    @patch("unified_respondd.unifi_client.Nominatim")
+    @patch("unified_respondd.unifi_client.get_client_count_for_ap")
+    @patch("unified_respondd.unifi_client.get_ap_channel_usage")
+    @patch("unified_respondd.unifi_client.get_location_by_address")
     def test_get_infos_with_access_points(
         self,
         mock_get_location,
@@ -574,11 +574,11 @@ class TestGetInfos:
         assert result.accesspoints[0].mac == "00:11:22:33:44:55"
         assert result.accesspoints[0].client_count == 5
 
-    @patch("unifi_respondd.unifi_client.config.load_config")
-    @patch("unifi_respondd.unifi_client.config.Config.from_dict")
-    @patch("unifi_respondd.unifi_client.scrape")
-    @patch("unifi_respondd.unifi_client.Controller")
-    @patch("unifi_respondd.unifi_client.Nominatim")
+    @patch("unified_respondd.unifi_client.config.load_config")
+    @patch("unified_respondd.unifi_client.config.Config.from_dict")
+    @patch("unified_respondd.unifi_client.scrape")
+    @patch("unified_respondd.unifi_client.Controller")
+    @patch("unified_respondd.unifi_client.Nominatim")
     def test_get_infos_filters_non_uap_devices(
         self,
         mock_nominatim,
@@ -629,11 +629,11 @@ class TestGetInfos:
         assert isinstance(result, Accesspoints)
         assert len(result.accesspoints) == 0
 
-    @patch("unifi_respondd.unifi_client.config.load_config")
-    @patch("unifi_respondd.unifi_client.config.Config.from_dict")
-    @patch("unifi_respondd.unifi_client.scrape")
-    @patch("unifi_respondd.unifi_client.Controller")
-    @patch("unifi_respondd.unifi_client.Nominatim")
+    @patch("unified_respondd.unifi_client.config.load_config")
+    @patch("unified_respondd.unifi_client.config.Config.from_dict")
+    @patch("unified_respondd.unifi_client.scrape")
+    @patch("unified_respondd.unifi_client.Controller")
+    @patch("unified_respondd.unifi_client.Nominatim")
     def test_get_infos_filters_aps_without_matching_ssid(
         self,
         mock_nominatim,

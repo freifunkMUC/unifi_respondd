@@ -10,7 +10,7 @@ from geopy.point import Point
 from pyunifi.controller import Controller
 from requests import get as rget
 
-from unifi_respondd import config, logger
+from unified_respondd import config, logger
 
 ffnodes = None
 

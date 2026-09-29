@@ -26,4 +26,4 @@ jobs:
           pip install -r requirements-dev.txt
       - name: Run tests with pytest
         run: |
-          pytest tests/ -v --cov=unifi_respondd --cov-report=term-missing
+          pytest tests/ -v --cov=unified_respondd --cov-report=term-missing
