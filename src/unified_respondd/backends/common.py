@@ -8,6 +8,9 @@ from requests import get as rget
 
 from unified_respondd import logger
 
+# Seconds to wait for a HTTP response, a hanging server must not block respondd
+REQUEST_TIMEOUT = 30
+
 
 def get_location_by_address(address, app, attempts=3):
     """This function returns latitude and longitude of a given address."""
@@ -28,7 +31,7 @@ def get_location_by_address(address, app, attempts=3):
 def scrape(url):
     """returns remote json"""
     try:
-        return rget(url).json()
+        return rget(url, timeout=REQUEST_TIMEOUT).json()
     except Exception as ex:
         logger.error("Error: %s" % (ex))
 

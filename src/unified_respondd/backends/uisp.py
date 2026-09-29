@@ -4,6 +4,7 @@ from typing import Any, Dict, Optional, Tuple
 from requests import get as rget
 
 from unified_respondd import logger
+from unified_respondd.backends.common import REQUEST_TIMEOUT
 from unified_respondd.model import Accesspoint, Accesspoints
 
 
@@ -32,7 +33,9 @@ class ControllerConfig:
 def scrape(url, token):
     """returns remote json"""
     try:
-        return rget(url, headers={"X-Auth-Token": token}).json()
+        return rget(
+            url, headers={"X-Auth-Token": token}, timeout=REQUEST_TIMEOUT
+        ).json()
     except Exception:
         return ""
 

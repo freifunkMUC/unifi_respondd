@@ -117,6 +117,20 @@ class TestControllerConfig:
         assert cfg.fallback_domain == "ffmuc"
 
 
+class TestScrape:
+    @patch("unified_respondd.backends.uisp.rget")
+    def test_token_and_timeout(self, rget):
+        rget.return_value.json.return_value = [{"id": 1}]
+        assert uisp.scrape(BASE + "/devices", "t") == [{"id": 1}]
+        rget.assert_called_once_with(
+            BASE + "/devices", headers={"X-Auth-Token": "t"}, timeout=30
+        )
+
+    @patch("unified_respondd.backends.uisp.rget", side_effect=Exception("timeout"))
+    def test_error(self, rget):
+        assert uisp.scrape(BASE + "/devices", "t") == ""
+
+
 class TestHelpers:
     @pytest.mark.parametrize(
         "identification,model",
