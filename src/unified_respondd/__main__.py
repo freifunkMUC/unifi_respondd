@@ -30,6 +30,13 @@ def main(argv=None):
             return 1
         json.dump(nodes, sys.stdout, indent=2)
         print()
+        if extResponddClient.failed_controllers:
+            print(
+                "Could not fetch the APs from the controllers: "
+                + ", ".join(extResponddClient.failed_controllers),
+                file=sys.stderr,
+            )
+            return 1
         return 0
     extResponddClient.start()
 

@@ -11,6 +11,7 @@ from typing import Dict, List, Optional
 from dataclasses_json import config, dataclass_json
 
 from unified_respondd import backends, logger
+from unified_respondd.model import Accesspoints
 
 OMIT_IF_NONE = config(exclude=lambda value: value is None)
 
@@ -242,12 +243,35 @@ def has_unknown_location(ap):
     return ap.latitude == 0 and ap.longitude == 0
 
 
+def apply_unknown_location(controller, accesspoints):
+    """This function applies the unknown_location mode of the controller:
+    "report" keeps 0/0, "omit" removes the location and "skip" the AP."""
+    if controller.unknown_location == "report":
+        return accesspoints
+    unknown = [ap for ap in accesspoints if has_unknown_location(ap)]
+    if controller.unknown_location == "skip":
+        if unknown:
+            logger.debug(
+                "Skipping %d APs without a location of controller %s",
+                len(unknown),
+                controller.name,
+            )
+        return [ap for ap in accesspoints if not has_unknown_location(ap)]
+    for ap in unknown:
+        ap.latitude = ap.longitude = None
+    return accesspoints
+
+
 class ResponddClient:
     """This class receives a request from the respondd server and returns the response."""
 
     def __init__(self, config):
         self._config = config
-        self._backend = backends.load(config.backend)
+        self._backends = [
+            (controller, backends.load(controller.backend))
+            for controller in config.controllers
+        ]
+        self.failed_controllers = []
         self._aps = None
         self._timeStart = time.time()
         self._timeStop = time.time()
@@ -292,8 +316,7 @@ class ResponddClient:
                     node_id=ap.mac.replace(":", ""),
                     location=(
                         None
-                        if self._config.unknown_location == "omit"
-                        and has_unknown_location(ap)
+                        if ap.latitude is None or ap.longitude is None
                         else LocationInfo(latitude=ap.latitude, longitude=ap.longitude)
                     ),
                     hardware=HardwareInfo(model=ap.model),
@@ -429,18 +452,23 @@ class ResponddClient:
             self._timeStop = time.time()
 
     def fetch(self):
-        """This method returns the APs of the backend, None on error.
-        APs without a location are dropped if unknown_location is "skip"."""
-        aps = self._backend.get_infos(self._config.controller)
-        if aps is not None and self._config.unknown_location == "skip":
-            known = [ap for ap in aps.accesspoints if not has_unknown_location(ap)]
-            if len(known) < len(aps.accesspoints):
-                logger.debug(
-                    "Skipping %d APs without a location",
-                    len(aps.accesspoints) - len(known),
+        """This method returns the APs of all controllers.
+        A failing controller is logged, skipped and listed in failed_controllers.
+        Returns None if all controllers failed."""
+        self.failed_controllers = []
+        accesspoints = []
+        for controller, backend in self._backends:
+            aps = backend.get_infos(controller.config)
+            if aps is None:
+                logger.error(
+                    "Could not fetch the APs of controller %s", controller.name
                 )
-            aps.accesspoints = known
-        return aps
+                self.failed_controllers.append(controller.name)
+                continue
+            accesspoints.extend(apply_unknown_location(controller, aps.accesspoints))
+        if len(self.failed_controllers) == len(self._backends):
+            return None
+        return Accesspoints(accesspoints=accesspoints)
 
     def collect(self):
         """This method fetches the APs once and returns all responses per node_id.
