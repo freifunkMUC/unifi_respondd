@@ -6,11 +6,13 @@ import socket
 import struct
 import time
 import zlib
-from typing import Dict, List
+from typing import Dict, List, Optional
 
-from dataclasses_json import dataclass_json
+from dataclasses_json import config, dataclass_json
 
 from unified_respondd import backends, logger
+
+OMIT_IF_NONE = config(exclude=lambda value: value is None)
 
 
 @dataclasses.dataclass
@@ -141,8 +143,9 @@ class WirelessInfo:
     # noise: int
     # active: int
     # busy: int
-    rx: int
-    tx: int
+    # Not every controller reports traffic per radio (omada), omit it then
+    rx: Optional[int] = dataclasses.field(default=None, metadata=OMIT_IF_NONE)
+    tx: Optional[int] = dataclasses.field(default=None, metadata=OMIT_IF_NONE)
 
 
 @dataclasses.dataclass

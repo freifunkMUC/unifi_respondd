@@ -1,77 +1,56 @@
 #!/usr/bin/env python3
 
-from geopy.point import Point
-from omada import Omada
-from typing import List, Optional
-from geopy.geocoders import Nominatim
-from omada_respondd import config
-from requests import get as rget
-from omada_respondd import logger
-import time
 import dataclasses
 import re
+from typing import Dict, Optional
 
-ffnodes = None
+from geopy.geocoders import Nominatim
 
-
-@dataclasses.dataclass
-class Accesspoint:
-    """This class contains the information of an AP.
-    Attributes:
-        name: The name of the AP (alias in the unifi controller).
-        mac: The MAC address of the AP.
-        snmp_location: The location of the AP (SNMP location in the unifi controller).
-        client_count: The number of clients connected to the AP.
-        client_count24: The number of clients connected to the AP via 2,4 GHz.
-        client_count5: The number of clients connected to the AP via 5 GHz.
-        latitude: The latitude of the AP.
-        longitude: The longitude of the AP.
-        model: The hardware model of the AP.
-        firmware: The firmware information of the AP.
-        uptime: The uptime of the AP.
-        contact: The contact of the AP for example an email address.
-        load_avg: The load average of the AP.
-        mem_used: The used memory of the AP.
-        mem_total: The total memory of the AP.
-        mem_buffer: The buffer memory of the AP.
-        tx_bytes: The transmitted bytes of the AP.
-        rx_bytes: The received bytes of the AP."""
-
-    name: str
-    mac: str
-    snmp_location: str
-    client_count: int
-    client_count24: int
-    client_count5: int
-    latitude: float
-    longitude: float
-    model: str
-    firmware: str
-    uptime: int
-    contact: str
-    load_avg: float
-    mem_used: int
-    mem_total: int
-    mem_buffer: int
-    tx_bytes: int
-    rx_bytes: int
-    gateway: str
-    gateway6: str
-    gateway_nexthop: str
-    neighbour_macs: List[str]
-    domain_code: str
-    # autoupdater: str
-    frequency24: Optional[int]
-    frequency5: Optional[int]
+from unified_respondd import logger
+from unified_respondd.backends._omada_api import Omada
+from unified_respondd.backends.common import (
+    get_location_by_address,
+    get_offloader,
+    scrape,
+)
+from unified_respondd.model import Accesspoint, Accesspoints, Radio
 
 
 @dataclasses.dataclass
-class Accesspoints:
-    """This class contains the information of all APs.
+class ControllerConfig:
+    """The omada specific part of the configuration file.
     Attributes:
-        accesspoints: A list of Accesspoint objects."""
+        controller_url: The omada controller URL including the port.
+        username: The username for omada controller.
+        password: The password for omada controller.
+        ssid_regex: Only APs broadcasting a matching SSID are reported.
+        offloader_mac: The MAC of the offloader per site name.
+        nodelist: The meshviewer.json URL to look up the offloaders.
+        fallback_domain: The domain used if no offloader is found.
+        ssl_verify: Whether to verify the TLS certificate of the controller.
+    """
 
-    accesspoints: List[Accesspoint]
+    controller_url: str
+    username: str
+    password: str
+    ssid_regex: str
+    offloader_mac: Dict[str, str]
+    nodelist: str
+    fallback_domain: str
+    ssl_verify: bool = True
+
+    @classmethod
+    def from_dict(cls, cfg: Dict[str, str]) -> "ControllerConfig":
+        return cls(
+            controller_url=cfg["controller_url"],
+            username=cfg["username"],
+            password=cfg["password"],
+            ssid_regex=cfg["ssid_regex"],
+            offloader_mac=cfg["offloader_mac"],
+            nodelist=cfg["nodelist"],
+            fallback_domain=cfg.get("fallback_domain", "omada_respondd_fallback"),
+            ssl_verify=cfg["ssl_verify"],
+        )
 
 
 def get_client_count_for_ap(clients, cfg):
@@ -85,40 +64,6 @@ def get_client_count_for_ap(clients, cfg):
             else:
                 client24_count += 1
     return client24_count + client5_count, client24_count, client5_count
-
-
-def get_traffic_count_for_ap(clients, cfg):
-    """This function returns the number total clients, 2,4Ghz clients and 5Ghz clients connected to an AP with Freifunk SSID."""
-    tx = 0
-    rx = 0
-    for client in clients:
-        if re.search(cfg.ssid_regex, client.get("ssid", ""), re.IGNORECASE):
-            tx += client.get("trafficUp", 0)
-            rx += client.get("trafficDown", 0)
-
-    return tx, rx
-
-
-def get_location_by_address(address, app):
-    """This function returns latitude and longitude of a given address."""
-    try:
-        point = Point().from_string(address)
-        return point.latitude, point.longitude
-    except:
-        try:
-            time.sleep(1)
-            geocode = app.geocode(address)
-            return geocode.raw["lat"], geocode.raw["lon"]
-        except:
-            return get_location_by_address(address)
-
-
-def scrape(url):
-    """returns remote json"""
-    try:
-        return rget(url).json()
-    except Exception as ex:
-        logger.error("Error: %s" % (ex))
 
 
 def _to_float(value, default=0.0):
@@ -196,6 +141,7 @@ def _extract_memory(ap, more_ap_infos):
 
     if mem_total <= 0:
         mem_total = 100 * 1024
+    mem_total = max(mem_total, 1024)
 
     mem_used = min(max(mem_used, 0), mem_total)
     mem_buffer = max(mem_buffer, 0)
@@ -217,9 +163,8 @@ def get_ap_frequency(channelData: str) -> Optional[int]:
         )
 
 
-def get_infos():
+def get_infos(cfg):
     """This function gathers all the information and returns a list of Accesspoint objects."""
-    cfg = config.Config.from_dict(config.load_config())
     ffnodes = scrape(cfg.nodelist)
     try:
         cb = Omada(baseurl=cfg.controller_url, verify=cfg.ssl_verify, verbose=False)
@@ -227,22 +172,21 @@ def get_infos():
     except Exception as ex:
         logger.error("Error: %s" % (ex))
         return
+    try:
+        return get_aps(cb, cfg, ffnodes)
+    finally:
+        try:
+            cb.logout()
+        except Exception as ex:
+            logger.error("Error: %s" % (ex))
+
+
+def get_aps(cb, cfg, ffnodes):
+    """This function returns the APs of all sites, reusing the logged in session."""
     geolookup = Nominatim(user_agent="ffmuc_respondd")
     aps = Accesspoints(accesspoints=[])
     for site in cb.getCurrentUser()["privilege"]["sites"]:
-        csite = Omada(
-            baseurl=cfg.controller_url,
-            site=site["name"],
-            verify=cfg.ssl_verify,
-            verbose=False,
-        )
-        csite.login(
-            username=cfg.username,
-            password=cfg.password,
-        )
-        siteSettings = csite.getSiteSettings()
-        autoupgrade = siteSettings["autoUpgrade"]["enable"]
-        aps_for_site = csite.getSiteDevices()
+        aps_for_site = cb.getSiteDevices(site=site["name"])
 
         for ap in aps_for_site:
             if (
@@ -251,7 +195,7 @@ def get_infos():
                 and ap.get("type") == "ap"
             ):
                 ap_mac = ap["mac"]
-                moreAPInfos = csite.getSiteAP(mac=ap_mac)
+                moreAPInfos = cb.getSiteAP(site=site["name"], mac=ap_mac)
                 ssids = moreAPInfos.get("ssidOverrides", None)
                 containsSSID = False
                 if ssids is not None:
@@ -270,15 +214,11 @@ def get_infos():
                     client_count24,
                     client_count5,
                 ) = get_client_count_for_ap(
-                    clients=csite.getSiteClientsAP(apmac=ap_mac), cfg=cfg
+                    clients=cb.getSiteClientsAP(site=site["name"], apmac=ap_mac),
+                    cfg=cfg,
                 )
 
                 # Traffic from entire AP (TODO: Filter Freifunk for ?SSID?)
-                # (
-                # tx2,
-                # rx2,
-                # ) = get_traffic_count_for_ap(clients=csite.getSiteClientsAP(apmac=ap_mac), cfg=cfg)
-
                 tx = 0
                 rx = 0
                 radioTraffic2g = moreAPInfos.get("radioTraffic2g", None)
@@ -303,23 +243,10 @@ def get_infos():
                 if wp5g is not None and wp5g.get("actualChannel", None) is not None:
                     frequency5 = get_ap_frequency(wp5g.get("actualChannel"))
 
-                neighbour_macs = []
-                try:
-                    neighbour_macs.append(cfg.offloader_mac.get(site["name"], None))
-                    offloader_id = cfg.offloader_mac.get(site["name"], "").replace(
-                        ":", ""
-                    )
-                    offloader = list(
-                        filter(
-                            lambda x: x["mac"]
-                            == cfg.offloader_mac.get(site["name"], ""),
-                            ffnodes["nodes"],
-                        )
-                    )[0]
-                except:
-                    offloader_id = None
-                    offloader = {}
-                    pass
+                offloader_mac, offloader_id, offloader = get_offloader(
+                    cfg.offloader_mac, ffnodes, site["name"]
+                )
+                neighbour_macs = [offloader_mac]
 
                 uplink = ap.get("uplink", None)
                 if uplink is not None:
@@ -349,23 +276,21 @@ def get_infos():
                             lat, lon = get_location_by_address(
                                 snmp["location"], geolookup
                             )
-                        except:
+                        except Exception:
                             pass
 
                     aps.accesspoints.append(
                         Accesspoint(
                             name=ap.get("name", None),
                             mac=ap_mac.replace("-", ":").lower(),
-                            snmp_location=snmp.get("location", None),
                             client_count=client_count,
                             client_count24=client_count24,
                             client_count5=client_count5,
-                            frequency24=frequency24,
-                            frequency5=frequency5,
                             latitude=float(lat),
                             longitude=float(lon),
                             model=ap.get("showModel", None),
                             firmware=ap.get("version", None),
+                            firmware_base="Omada",
                             uptime=moreAPInfos.get("uptimeLong", None),
                             contact=snmp.get("contact", None),
                             load_avg=_extract_loadavg(ap, moreAPInfos),
@@ -379,7 +304,11 @@ def get_infos():
                             gateway_nexthop=offloader_id,
                             neighbour_macs=neighbour_macs,
                             domain_code=offloader.get("domain", cfg.fallback_domain),
-                            # autoupdater=autoupgrade,
+                            radios=[
+                                Radio(frequency=frequency)
+                                for frequency in (frequency24, frequency5)
+                                if frequency
+                            ],
                         )
                     )
     return aps
@@ -387,7 +316,9 @@ def get_infos():
 
 def main():
     """This function is the main function, it's only executed if we aren't imported."""
-    print(get_infos())
+    from unified_respondd import config
+
+    print(get_infos(config.Config.from_dict(config.load_config()).controller))
 
 
 if __name__ == "__main__":
