@@ -1,15 +1,13 @@
 """Controller backends.
 
-A backend is a module providing:
-    ControllerConfig: A dataclass with a from_dict(cfg) classmethod reading the
-        backend specific keys of the configuration file.
-    get_infos(cfg): Returns the model.Accesspoints of the controller or None on error.
-
-Backends are imported lazily, so only the dependencies of the configured
-backend have to be installed.
+A backend is a module implementing the Backend protocol. Backends are imported
+lazily, so only the dependencies of the configured backend have to be installed.
 """
 
 import importlib
+from typing import Any, Dict, Optional, Protocol, runtime_checkable
+
+from unified_respondd.model import Accesspoints
 
 DEFAULT_BACKEND = "unifi"
 
@@ -23,7 +21,27 @@ BACKENDS = {
 }
 
 
-def load(name):
+class ControllerConfig(Protocol):
+    """The backend specific part of the configuration file."""
+
+    @classmethod
+    def from_dict(cls, cfg: Dict[str, Any]) -> "ControllerConfig": ...
+
+
+@runtime_checkable
+class Backend(Protocol):
+    """The interface of a backend module.
+    Attributes:
+        ControllerConfig: Reads the backend specific keys of the configuration file.
+        get_infos: Returns the APs of the controller, None on error.
+    """
+
+    ControllerConfig: type
+
+    def get_infos(self, cfg: Any) -> Optional[Accesspoints]: ...
+
+
+def load(name) -> Backend:
     """Imports and returns the backend module for the given name."""
     try:
         module_name = BACKENDS[name]
