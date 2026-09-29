@@ -2,15 +2,17 @@
 
 import dataclasses
 import re
-import time
 from typing import Dict
 
 from geopy.geocoders import Nominatim
-from geopy.point import Point
 from pyunifi.controller import Controller
-from requests import get as rget
 
 from unified_respondd import logger
+from unified_respondd.backends.common import (
+    get_location_by_address,
+    get_offloader,
+    scrape,
+)
 from unified_respondd.model import Accesspoint, Accesspoints, Radio
 
 ffnodes = None
@@ -109,30 +111,6 @@ def frequency_from_channel(channel):
             return 2407 + (channel) * 5
 
 
-def get_location_by_address(address, app, attempts=3):
-    """This function returns latitude and longitude of a given address."""
-    try:
-        point = Point().from_string(address)
-        return point.latitude, point.longitude
-    except Exception:
-        if attempts <= 0:
-            raise
-        try:
-            time.sleep(1)
-            geocode = app.geocode(address)
-            return geocode.raw["lat"], geocode.raw["lon"]
-        except Exception:
-            return get_location_by_address(address, app, attempts - 1)
-
-
-def scrape(url):
-    """returns remote json"""
-    try:
-        return rget(url).json()
-    except Exception as ex:
-        logger.error("Error: %s" % (ex))
-
-
 def get_infos(cfg):
     """This function gathers all the information and returns a list of Accesspoint objects."""
     ffnodes = scrape(cfg.nodelist)
@@ -209,23 +187,10 @@ def get_infos(cfg):
                             )
                         except Exception:
                             pass
-                    try:
-                        neighbour_macs.append(cfg.offloader_mac.get(site["desc"], None))
-                        offloader_id = cfg.offloader_mac.get(site["desc"], "").replace(
-                            ":", ""
-                        )
-                        offloader = list(
-                            filter(
-                                lambda x: (
-                                    x["mac"] == cfg.offloader_mac.get(site["desc"], "")
-                                ),
-                                ffnodes["nodes"],
-                            )
-                        )[0]
-                    except Exception:
-                        offloader_id = None
-                        offloader = {}
-                        pass
+                    offloader_mac, offloader_id, offloader = get_offloader(
+                        cfg.offloader_mac, ffnodes, site["desc"]
+                    )
+                    neighbour_macs.append(offloader_mac)
                     radios = []
                     if channel5:
                         radios.append(
