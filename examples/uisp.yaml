@@ -9,6 +9,7 @@ unicast_address: fe80::68ff:94ff:fe00:1504
 unicast_port: 10001
 interface: eth0
 verbose: true
+unknown_location: report  # APs at 0/0: report, omit or skip
 logging_config:
     formatters:
       standard:

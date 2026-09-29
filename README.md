@@ -64,6 +64,7 @@ Keys of all backends:
 | `verbose` | Log more details |
 | `logging_config` | Optional [logging dictConfig](https://docs.python.org/3/library/logging.config.html#logging-config-dictschema) |
 | `fallback_domain` | Optional domain if no offloader is found (default `<backend>_respondd_fallback`) |
+| `unknown_location` | APs without a location (0/0): `report` them at 0/0 (default), `omit` the location so they are listed but not shown on the map, or `skip` them |
 
 Keys of the backends:
 
@@ -77,6 +78,8 @@ Keys of the backends:
 | `ssl_verify` | ✓ | ✓ | – |
 | `ssid_regex` | ✓ | ✓ | – |
 | `offloader_mac`, `nodelist` | ✓ | ✓ | – |
+
+With `skip`, links of other nodes to a skipped AP still show up in their neighbours.
 
 `unifi` and `omada` only report APs broadcasting an SSID that matches `ssid_regex`. `uisp` reports all connected devices except those with `Router` in their name, the neighbours come from the UISP data links.
 
