@@ -44,6 +44,8 @@ jobs:
   publish-testpypi:
     runs-on: ubuntu-latest
     name: Publish to TestPyPI
+    # must match the environment of the trusted publisher on test.pypi.org
+    environment: testpypi
     if: github.event_name == 'push'
     needs:
       - build
@@ -78,6 +80,8 @@ jobs:
   publish-pypi:
     runs-on: ubuntu-latest
     name: Publish to PyPI
+    # must match the environment of the trusted publisher on pypi.org
+    environment: pypi
     # only publish to PyPI when a tag was created
     if: contains(github.ref, 'refs/tags')
     needs:
