@@ -8,13 +8,14 @@ Supported controllers (backends):
 |---------|------------|
 | `unifi` | UniFi Network controller |
 | `omada` | TP-Link Omada controller |
+| `uisp` | UISP (airFiber, airMAX, … links) |
 
 ## Installation
 
 Install the package together with the dependencies of your backend:
 
 ```sh
-pip install 'unified_respondd[unifi]'   # or [omada]
+pip install 'unified_respondd[unifi]'   # or [omada], [uisp]
 UNIFIED_RESPONDD_CONFIG_FILE=/etc/unified_respondd.yaml unified-respondd
 ```
 
@@ -52,11 +53,26 @@ Behaviour changes compared to omada_respondd:
 - One login per query for all sites, followed by a logout.
 - A failing site or AP is skipped and logged instead of aborting the whole query.
 
+## Migrating from uisp_respondd
+
+1. Install `unified_respondd[uisp]` (or `pip install -r requirements.txt` in a checkout).
+2. Add `backend: uisp` to the config. `controller_port` is no longer needed. `controller_url` is the API base URL without `/devices`, e.g. `https://uisp.example.org/nms/api/v2.1`.
+3. Rename `uisp_respondd.yaml` to `unified_respondd.yaml` or point `UNIFIED_RESPONDD_CONFIG_FILE` to it. `UISP_RESPONDD_CONFIG_FILE` is not read anymore.
+4. Check the output with `--dry-run`, then restart the service.
+
+Behaviour changes compared to uisp_respondd:
+
+- The firmware base is `UISP` instead of `UniFi`.
+- `fallback_domain` sets the domain of the devices (default `uisp_respondd_fallback`).
+- The data links are fetched once per query instead of once per device.
+- Requests time out after 30 seconds, failed requests are logged.
+- The statistics contain `gateway*: null` and `wireless: []`, the nodeinfo `owner.contact: null` and devices without a link an empty neighbour list, like the other backends.
+
 ## Overview
 
 ```mermaid
 graph TD;
-	A{"*respondd_main*"} -->| | B("*backend (unifi, omada)*")
+	A{"*respondd_main*"} -->| | B("*backend (unifi, omada, uisp)*")
     A -->| | C("*respondd_client*")
 	B -->|"RestFul API"| D("controller")
     C -->|"Subscribe"| E("multicast")
@@ -67,7 +83,7 @@ graph TD;
 
 ## Config File
 
-See [`unifi_respondd.yaml.example`](unifi_respondd.yaml.example) and [`unified_respondd.omada.yaml.example`](unified_respondd.omada.yaml.example). The unifi config:
+See [`unifi_respondd.yaml.example`](unifi_respondd.yaml.example), [`unified_respondd.omada.yaml.example`](unified_respondd.omada.yaml.example) and [`unified_respondd.uisp.yaml.example`](unified_respondd.uisp.yaml.example). The unifi config:
 
 ```yaml
 backend: unifi
@@ -107,10 +123,12 @@ fallback_domain: "unifi_respondd_fallback"  # optional
 
 The omada backend uses the same keys, except `version` and `controller_port`. `controller_url` includes the port, e.g. `https://omada.lan:8043`.
 
+The uisp backend only needs `controller_url` (the API base URL, e.g. `https://uisp.lan/nms/api/v2.1`), an API `token` and optionally `fallback_domain`, plus the respondd keys (`multicast_*`, `unicast_*`, `interface`, `verbose`). Devices with `Router` in their name and disconnected devices are skipped. Neighbours come from the UISP data links.
+
 ## Development
 
 ```sh
-pip install -r requirements-dev.txt -e '.[unifi,omada]'
+pip install -r requirements-dev.txt -e '.[unifi,omada,uisp]'
 pytest
 ruff check . && ruff format --check .
 ```
