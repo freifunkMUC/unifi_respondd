@@ -203,7 +203,7 @@ def get_aps(cb, cfg, ffnodes):
                         if re.search(
                             cfg.ssid_regex, ssid.get("ssid", ""), re.IGNORECASE
                         ):
-                            if (ssid.get("ssidEnabled"), False):
+                            if ssid.get("ssidEnabled", False):
                                 containsSSID = True
 
                 if containsSSID is False:

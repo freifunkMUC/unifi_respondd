@@ -208,6 +208,15 @@ class TestGetInfos:
         assert ap.domain_code == "ffmuc_test"
         assert ap.neighbour_macs == ["02:00:00:00:00:01", "02:00:00:00:00:99"]
 
+    @pytest.mark.parametrize("enabled", [{"ssidEnabled": False}, {}])
+    def test_skip_ap_with_disabled_ssid(self, cfg, fake_omada, enabled):
+        details = {
+            **DETAILS["02-00-00-00-00-10"],
+            "ssidOverrides": [{"ssid": "freifunk", **enabled}],
+        }
+        with patch.dict(DETAILS, {"02-00-00-00-00-10": details}):
+            assert get_infos(cfg).accesspoints == []
+
     def test_native_location_without_snmp_location(self, cfg, fake_omada):
         details = DETAILS["02-00-00-00-00-10"]
         details = {
