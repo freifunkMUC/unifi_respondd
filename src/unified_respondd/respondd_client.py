@@ -238,6 +238,34 @@ class NeighboursInfo:
     batadv: Dict[str, Neighbours]
 
 
+REQUEST_TYPES = ("nodeinfo", "statistics", "neighbours")
+
+# Seconds to answer multicast requests from the last query of the controllers
+CACHE_SECONDS = 30
+
+
+def parse_request(msg):
+    """This function parses a respondd request received via multicast.
+    "GET nodeinfo statistics" asks for several types (compressed response),
+    "nodeinfo" for one (uncompressed response with the bare object).
+    Returns the requested types and whether it is a multi request, or None if
+    the request is invalid. Requests come from the network, so nothing here may raise.
+    """
+    try:
+        words = msg.decode("utf-8").split()
+    except UnicodeDecodeError:
+        logger.debug("Ignoring request that isn't UTF-8")
+        return None
+    multi = bool(words) and words[0] == "GET"
+    requested = words[1:] if multi else words[:1]
+    types = [request for request in requested if request in REQUEST_TYPES]
+    if len(types) < len(requested):
+        logger.debug("Ignoring unknown request types in %r", requested)
+    if not types:
+        return None
+    return types, multi
+
+
 def has_unknown_location(ap):
     """Backends report 0/0 if the location of an AP isn't set."""
     return ap.latitude == 0 and ap.longitude == 0
@@ -273,6 +301,8 @@ class ResponddClient:
         ]
         self.failed_controllers = []
         self._aps = None
+        self._cached_aps = None
+        self._fetched_at = None
         self._timeStart = time.time()
         self._timeStop = time.time()
         self._sock = socket.socket(socket.AF_INET6, socket.SOCK_DGRAM)
@@ -401,11 +431,13 @@ class ResponddClient:
         return neighbours
 
     def listenMulticast(self):
-        msg, sourceAddress = self._sock.recvfrom(2048)
-        logger.info("Using multicast method")
-        msgSplit = str(msg, "UTF-8").split(" ")
-
-        return msgSplit, sourceAddress
+        """This method waits for a valid request and returns it with its sender."""
+        while True:
+            msg, sourceAddress = self._sock.recvfrom(2048)
+            request = parse_request(msg)
+            if request is not None:
+                logger.debug("Using multicast method")
+                return request, sourceAddress
 
     def sendUnicast(self):
         logger.info("Using unicast method")
@@ -430,26 +462,32 @@ class ResponddClient:
             )
 
         while True:
-            responseStruct = {}
             sourceAddress = (self._config.unicast_address, self._config.unicast_port)
-            msgSplit = ["GET", "nodeinfo", "statistics", "neighbours"]
+            request = (list(REQUEST_TYPES), True)
 
             if self._config.multicast_enabled:
-                msgSplit, sourceAddress = self.listenMulticast()
+                request, sourceAddress = self.listenMulticast()
             else:
                 self.sendUnicast()
             self._timeStart = time.time()
-            self._aps = self.fetch()
+            self._aps = self.fetch_cached()
             if self._aps is None:
                 continue
-            if msgSplit[0] == "GET":  # multi_request
-                for request in msgSplit[1:]:
-                    responseStruct[request] = self.buildStruct(request)
-                self.sendStruct(sourceAddress, responseStruct, True)
-            else:  # single_request
-                responseStruct = self.buildStruct(msgSplit[0])
-                self.sendStruct(sourceAddress, responseStruct, False)
+            types, multi = request
+            responseStruct = {type: self.buildStruct(type) for type in types}
+            self.sendStruct(sourceAddress, responseStruct, multi)
             self._timeStop = time.time()
+
+    def fetch_cached(self):
+        """This method returns the APs, in multicast mode fetched at most every
+        CACHE_SECONDS. A flood of requests must not flood the controllers."""
+        if not self._config.multicast_enabled:
+            return self.fetch()
+        now = time.monotonic()
+        if self._fetched_at is None or now - self._fetched_at >= CACHE_SECONDS:
+            self._cached_aps = self.fetch()
+            self._fetched_at = now
+        return self._cached_aps
 
     def fetch(self):
         """This method returns the APs of all controllers.
@@ -508,24 +546,26 @@ class ResponddClient:
         elif responseType == "neighbours":
             responseClass = self._neighbours
         else:
-            logger.warning("unknown command: " + responseType)
+            logger.warning("unknown command: %r", responseType)
             return
 
         return responseClass
 
     def sendStruct(self, destAddress, responseStruct, withCompression):
-        """This method sends the response structure to the respondd server."""
-        logger.debug(
-            str(destAddress[0]) + " " + str(destAddress[1]) + " " + str(responseStruct)
-        )
+        """This method sends the response structure to the respondd server.
+        A multi request (withCompression) gets all types per node, compressed,
+        a single request the bare object of its type."""
+        logger.debug("Sending %s to %s", list(responseStruct), destAddress)
 
         merged = self.merge_node(responseStruct)
         for infos in merged.values():
-            node = {}
-            for key, info in infos.items():
-                node.update({key: info.to_dict()})
+            if withCompression:
+                node = {key: info.to_dict() for key, info in infos.items()}
+            else:
+                [info] = infos.values()
+                node = info.to_dict()
             responseData = bytes(json.dumps(node), "UTF-8")
-            logger.info(str(responseData))
+            logger.debug(str(responseData))
 
             if withCompression:
                 encoder = zlib.compressobj(

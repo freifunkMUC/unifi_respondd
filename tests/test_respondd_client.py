@@ -9,7 +9,7 @@ import pytest
 
 from unified_respondd.config import Controller
 from unified_respondd.model import Accesspoint, Accesspoints, Radio
-from unified_respondd.respondd_client import ResponddClient
+from unified_respondd.respondd_client import ResponddClient, parse_request
 
 
 def make_ap(**kwargs):
@@ -168,12 +168,14 @@ class TestBuildAndSend:
         payload = json.loads(zlib.decompress(data, -15))
         assert payload["nodeinfo"]["hostname"] == "TestAP"
 
-    def test_send_uncompressed(self, client):
+    def test_send_single_request(self, client):
+        """A single request is answered with the bare, uncompressed object."""
         response = client.buildStruct("statistics")
         client.sendStruct(("fe80::1", 10001), {"statistics": response}, False)
 
         data, _ = client._sock.sendto.call_args.args
-        assert json.loads(data)["statistics"]["node_id"] == "020000000010"
+        assert json.loads(data)["node_id"] == "020000000010"
+        assert "uptime" in json.loads(data)
 
 
 class TestUnknownLocation:
@@ -274,3 +276,79 @@ class TestMultipleControllers:
             backend.get_infos.return_value.accesspoints[0].longitude = 0
         nodes = client.collect()
         assert [node["nodeinfo"]["hostname"] for node in nodes.values()] == ["UnifiAP"]
+
+
+class TestParseRequest:
+    @pytest.mark.parametrize(
+        "msg,expected",
+        [
+            (
+                b"GET nodeinfo statistics neighbours",
+                (["nodeinfo", "statistics", "neighbours"], True),
+            ),
+            (b"GET statistics\n", (["statistics"], True)),
+            (b"nodeinfo", (["nodeinfo"], False)),
+            (b"GET nodeinfo foo", (["nodeinfo"], True)),
+        ],
+    )
+    def test_valid(self, msg, expected):
+        assert parse_request(msg) == expected
+
+    @pytest.mark.parametrize(
+        "msg", [b"", b"   ", b"GET", b"GET foo", b"foo", b"\xff\xfe GET nodeinfo"]
+    )
+    def test_invalid(self, msg):
+        assert parse_request(msg) is None
+
+
+class TestMulticastLoop:
+    """Requests come from the network, no request may stop the service."""
+
+    @pytest.fixture
+    def multicast(self, client):
+        client._config.multicast_enabled = True
+        client._config.interface = "eth0"
+        client._backends[0][1].get_infos.return_value = Accesspoints(
+            accesspoints=[make_ap()]
+        )
+        client._sock = Mock()
+        client.joinMCAST = Mock()
+        return client
+
+    def run(self, client, *packets):
+        client._sock.recvfrom.side_effect = [
+            *((packet, ("fe80::1", 1001)) for packet in packets),
+            KeyboardInterrupt,
+        ]
+        with pytest.raises(KeyboardInterrupt):
+            client.start()
+        return [call.args for call in client._sock.sendto.call_args_list]
+
+    def test_invalid_requests_are_ignored(self, multicast):
+        sent = self.run(multicast, b"\xff\xfe", b"foo", b"GET", b"GET nodeinfo")
+        assert len(sent) == 1
+        data, address = sent[0]
+        assert address == ("fe80::1", 1001)
+        assert (
+            json.loads(zlib.decompress(data, -15))["nodeinfo"]["hostname"] == "TestAP"
+        )
+
+    def test_single_request(self, multicast):
+        [(data, _)] = self.run(multicast, b"nodeinfo")
+        assert json.loads(data)["hostname"] == "TestAP"
+
+    def test_requests_are_answered_from_cache(self, multicast):
+        sent = self.run(multicast, b"GET nodeinfo", b"GET statistics", b"nodeinfo")
+        assert len(sent) == 3
+        multicast._backends[0][1].get_infos.assert_called_once()
+
+    def test_cache_expires(self, multicast):
+        with patch("unified_respondd.respondd_client.time.monotonic") as monotonic:
+            monotonic.side_effect = [0, 10, 31]
+            self.run(multicast, b"nodeinfo", b"nodeinfo", b"nodeinfo")
+        assert multicast._backends[0][1].get_infos.call_count == 2
+
+    def test_failed_fetch_is_cached_too(self, multicast):
+        multicast._backends[0][1].get_infos.return_value = None
+        assert self.run(multicast, b"nodeinfo", b"nodeinfo") == []
+        multicast._backends[0][1].get_infos.assert_called_once()
