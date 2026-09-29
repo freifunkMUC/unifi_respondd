@@ -291,8 +291,8 @@ def get_accesspoint(cb, site_name, ap, cfg, ffnodes, geolookup):
     if snmp.get("location", None):
         try:
             lat, lon = get_location_by_address(snmp["location"], geolookup)
-        except Exception:
-            pass
+        except Exception as ex:
+            logger.debug("Could not geocode the location of %s: %s", ap.get("name"), ex)
 
     return Accesspoint(
         name=ap.get("name", None),

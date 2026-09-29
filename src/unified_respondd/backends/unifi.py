@@ -186,8 +186,12 @@ def get_infos(cfg):
                             lat, lon = get_location_by_address(
                                 ap["snmp_location"], geolookup
                             )
-                        except Exception:
-                            pass
+                        except Exception as ex:
+                            logger.debug(
+                                "Could not geocode the location of %s: %s",
+                                ap.get("name"),
+                                ex,
+                            )
                     offloader_mac, offloader_id, offloader = get_offloader(
                         cfg.offloader_mac, ffnodes, site["desc"]
                     )
