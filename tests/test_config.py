@@ -105,3 +105,27 @@ class TestLoadConfig:
         path.write_text(yaml.safe_dump(UNIFI_CONFIG))
         monkeypatch.setenv("UNIFIED_RESPONDD_CONFIG_FILE", str(path))
         assert config.load_config()["username"] == "user"
+
+
+class TestCredentialsNotInRepr:
+    """Credentials must not end up in logs when a config is printed."""
+
+    def test_unifi(self):
+        cfg = config.Config.from_dict(UNIFI_CONFIG)
+        assert "secret" not in repr(cfg)
+
+    def test_omada(self):
+        from unified_respondd.backends import omada
+
+        cfg = omada.ControllerConfig.from_dict(
+            {**UNIFI_CONFIG, "controller_url": "https://omada.example.org:8043"}
+        )
+        assert "secret" not in repr(cfg)
+
+    def test_uisp(self):
+        from unified_respondd.backends import uisp
+
+        cfg = uisp.ControllerConfig.from_dict(
+            {"controller_url": "https://uisp.example.org", "token": "secret"}
+        )
+        assert "secret" not in repr(cfg)

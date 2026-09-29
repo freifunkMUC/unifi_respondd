@@ -18,7 +18,8 @@ class ControllerConfig:
     """
 
     controller_url: str
-    token: str
+    # Keep credentials out of logs
+    token: str = dataclasses.field(repr=False)
     fallback_domain: str = "uisp_respondd_fallback"
 
     @classmethod

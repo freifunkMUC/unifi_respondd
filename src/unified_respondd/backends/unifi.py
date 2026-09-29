@@ -37,7 +37,8 @@ class ControllerConfig:
     controller_url: str
     controller_port: int
     username: str
-    password: str
+    # Keep credentials out of logs
+    password: str = dataclasses.field(repr=False)
     ssid_regex: str
     offloader_mac: Dict[str, str]
     nodelist: str
