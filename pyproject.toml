@@ -10,7 +10,7 @@ readme = "README.md"
 license = "GPL-3.0-only AND MIT"
 license-files = ["LICENSE", "LICENSES/*"]
 authors = [{ name = "Annika Wickert", email = "aw@awlnx.space" }]
-keywords = ["Freifunk", "respondd", "UniFi", "Omada"]
+keywords = ["Freifunk", "respondd", "UniFi", "Omada", "UISP"]
 requires-python = ">=3.10"
 dependencies = [
     "dataclasses-json>=0.6",
@@ -20,6 +20,9 @@ dependencies = [
 [project.optional-dependencies]
 omada = [
     "geopy>=2.4",
+    "requests>=2",
+]
+uisp = [
     "requests>=2",
 ]
 unifi = [

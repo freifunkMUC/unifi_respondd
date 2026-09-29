@@ -1,53 +1,32 @@
-from requests import get as rget
-from typing import List, Any, Optional, Tuple
-import uisp_respondd.config as config
-
-
 import dataclasses
+from typing import Any, Dict, Optional, Tuple
 
-ffnodes = None
-cfg = config.Config.from_dict(config.load_config())
+from requests import get as rget
+
+from unified_respondd import logger
+from unified_respondd.model import Accesspoint, Accesspoints
 
 
 @dataclasses.dataclass
-class Accesspoint:
-    """This class contains the information of an AP.
+class ControllerConfig:
+    """The UISP specific part of the configuration file.
     Attributes:
-        name: The name of the AP (alias in the unifi controller).
-        mac: The MAC address of the AP.
-        snmp_location: The location of the AP (SNMP location in the unifi controller).
-        latitude: The latitude of the AP.
-        longitude: The longitude of the AP.
-        model: The hardware model of the AP.
-        firmware: The firmware information of the AP.
-        uptime: The uptime of the AP.
+        controller_url: The UISP API URL, e.g. https://uisp.example.org/nms/api/v2.1
+        token: The UISP API token.
+        fallback_domain: The domain of all devices.
     """
 
-    name: str
-    mac: str
-    latitude: float
-    longitude: float
-    neighbour: str
-    domain_code: str
-    firmware: str
-    model: str
-    device_type: str
-    uptime: Optional[int]
-    cpu: Optional[int]
-    ram_used_percent: Optional[int]
-    loadavg: Optional[float]
-    tx_bytes: Optional[int]
-    rx_bytes: Optional[int]
-    client_total: Optional[int]
+    controller_url: str
+    token: str
+    fallback_domain: str = "uisp_respondd_fallback"
 
-
-@dataclasses.dataclass
-class Accesspoints:
-    """This class contains the information of all APs.
-    Attributes:
-        accesspoints: A list of Accesspoint objects."""
-
-    accesspoints: List[Accesspoint]
+    @classmethod
+    def from_dict(cls, cfg: Dict[str, str]) -> "ControllerConfig":
+        return cls(
+            controller_url=cfg["controller_url"],
+            token=cfg["token"],
+            fallback_domain=cfg.get("fallback_domain", "uisp_respondd_fallback"),
+        )
 
 
 def scrape(url, token):
@@ -84,7 +63,7 @@ def get_location(json):
         return 0, 0
 
 
-def get_apDevice(json):
+def get_apDevice(json, cfg):
     """returns apDevice"""
     links = scrape(cfg.controller_url + "/data-links", cfg.token)
     if links:
@@ -203,7 +182,7 @@ def get_device_id(json):
         return None
 
 
-def get_device_statistics(device_id: str, interval: str = "hour"):
+def get_device_statistics(cfg, device_id: str, interval: str = "hour"):
     if not device_id:
         return None
     stats = scrape(
@@ -215,7 +194,7 @@ def get_device_statistics(device_id: str, interval: str = "hour"):
     return None
 
 
-def get_device_interfaces(device_id: str):
+def get_device_interfaces(cfg, device_id: str):
     if not device_id:
         return None
     interfaces = scrape(
@@ -226,7 +205,7 @@ def get_device_interfaces(device_id: str):
     return None
 
 
-def get_device_stations(device_id: str):
+def get_device_stations(cfg, device_id: str):
     """Get P2P link stations for airFiber/wireless devices.
 
     Returns list of station objects with uptime, rxBytes, txBytes, signal, etc.
@@ -321,9 +300,6 @@ def get_loadavg(json, stats: Any = None):
         return round(cpu / 100.0, 3)
 
     # Fallback for blackBox devices: try UISP statistics endpoint.
-    device_id = get_device_id(json)
-    if stats is None:
-        stats = get_device_statistics(device_id, "hour")
     if not stats:
         return None
 
@@ -460,8 +436,9 @@ def get_client_total(json):
     return None
 
 
-def get_infos():
+def get_infos(cfg):
     aps = Accesspoints(accesspoints=[])
+    neighbour_names = {}
     devices = scrape(cfg.controller_url + "/devices", cfg.token)
     if devices:
         for device in devices:
@@ -476,9 +453,13 @@ def get_infos():
                 device_type = get_device_type(device)
 
                 # Fetch additional data sources
-                stats = get_device_statistics(device_id, "hour") if device_id else None
-                interfaces = get_device_interfaces(device_id) if device_id else None
-                stations = get_device_stations(device_id) if device_id else None
+                stats = (
+                    get_device_statistics(cfg, device_id, "hour") if device_id else None
+                )
+                interfaces = (
+                    get_device_interfaces(cfg, device_id) if device_id else None
+                )
+                stations = get_device_stations(cfg, device_id) if device_id else None
 
                 # Multi-tier fallback for traffic bytes
                 tx_bytes, rx_bytes = get_traffic_bytes(stats)
@@ -500,24 +481,75 @@ def get_infos():
                 if client_total is None and stations is not None:
                     client_total = get_link_count(stations)
 
-                aps.accesspoints.append(
-                    Accesspoint(
-                        name=hostname,
-                        mac=get_mac(device),
-                        latitude=float(get_location(device)[0]),
-                        longitude=float(get_location(device)[1]),
-                        neighbour=get_apDevice(device),
-                        domain_code="uisp_respondd_fallback",
-                        firmware=get_firmware(device),
-                        model=get_model(device),
-                        device_type=device_type,
-                        uptime=get_uptime(device, interfaces, stations),
-                        cpu=get_cpu_percent(device),
-                        ram_used_percent=get_ram_used_percent(device),
-                        loadavg=get_loadavg(device, stats),
-                        tx_bytes=tx_bytes,
-                        rx_bytes=rx_bytes,
-                        client_total=client_total,
+                uptime = get_uptime(device, interfaces, stations)
+                loadavg = get_loadavg(device, stats)
+                ram_used_percent = get_ram_used_percent(device)
+
+                # Some UISP devices are blackBox/inventory-only and do not expose
+                # telemetry. For these, emit safe defaults so they appear online
+                # (not offline) in meshviewer.
+                if (
+                    uptime is None
+                    and ram_used_percent is None
+                    and loadavg is None
+                    and tx_bytes is None
+                    and rx_bytes is None
+                    and client_total is None
+                    and str(device_type).lower() == "blackbox"
+                ):
+                    logger.debug(
+                        "Emitting safe defaults for %s (%s): blackBox with no telemetry",
+                        hostname,
+                        get_mac(device),
                     )
+
+                if tx_bytes is not None or rx_bytes is not None:
+                    tx_bytes = tx_bytes if tx_bytes is not None else 0
+                    rx_bytes = rx_bytes if rx_bytes is not None else 0
+
+                ap = Accesspoint(
+                    name=hostname,
+                    mac=get_mac(device),
+                    latitude=float(get_location(device)[0]),
+                    longitude=float(get_location(device)[1]),
+                    domain_code=cfg.fallback_domain,
+                    firmware=get_firmware(device),
+                    firmware_base="UniFi",
+                    model=get_model(device),
+                    uptime=uptime if uptime is not None else 0,
+                    load_avg=round(loadavg, 2) if loadavg is not None else 0.0,
+                    # Meshviewer computes the memory usage from total/free/buffers,
+                    # UISP only reports the usage in percent.
+                    mem_total=100 * 1024,
+                    mem_used=(ram_used_percent or 0) * 1024,
+                    mem_buffer=0,
+                    tx_bytes=tx_bytes,
+                    rx_bytes=rx_bytes,
+                    client_count=client_total,
+                    client_count24=0 if client_total is not None else None,
+                    client_count5=0 if client_total is not None else None,
                 )
+                aps.accesspoints.append(ap)
+                neighbour_names[ap.mac] = get_apDevice(device, cfg)
+
+    # UISP links devices by name, respondd by MAC
+    for ap in aps.accesspoints:
+        neighbour_name = neighbour_names[ap.mac]
+        if neighbour_name is not None:
+            ap.neighbour_macs = [
+                neighbour.mac
+                for neighbour in aps.accesspoints
+                if neighbour.name == neighbour_name
+            ]
     return aps
+
+
+def main():
+    """This function is the main function, it's only executed if we aren't imported."""
+    from unified_respondd import config
+
+    print(get_infos(config.Config.from_dict(config.load_config()).controller))
+
+
+if __name__ == "__main__":
+    main()

@@ -15,6 +15,7 @@ DEFAULT_BACKEND = "unifi"
 
 BACKENDS = {
     "omada": "unified_respondd.backends.omada",
+    "uisp": "unified_respondd.backends.uisp",
     "unifi": "unified_respondd.backends.unifi",
 }
 
