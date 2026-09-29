@@ -1,112 +1,63 @@
 #!/usr/bin/env python3
-"""Unit tests for unifi_respondd/unifi_client.py module."""
+"""Unit tests for unified_respondd/backends/unifi.py module."""
 
 from unittest.mock import Mock, patch
 
 import pytest
 
-from unifi_respondd.unifi_client import (
-    Accesspoint,
-    Accesspoints,
+from unified_respondd.backends.unifi import (
+    ControllerConfig,
+    frequency_from_channel,
     get_ap_channel_usage,
     get_client_count_for_ap,
     get_infos,
     get_location_by_address,
     scrape,
 )
+from unified_respondd.model import Accesspoints, Radio
 
 
-class TestAccesspointDataclass:
-    """Test the Accesspoint dataclass."""
+class TestControllerConfig:
+    """Test the ControllerConfig dataclass."""
 
-    def test_accesspoint_creation(self):
-        """Test creating an Accesspoint instance with all fields."""
-        ap = Accesspoint(
-            name="TestAP",
-            mac="00:11:22:33:44:55",
-            snmp_location="48.1351, 11.5820",
-            client_count=10,
-            client_count24=5,
-            client_count5=5,
-            channel5=36,
-            rx_bytes5=1000,
-            tx_bytes5=2000,
-            channel24=6,
-            rx_bytes24=500,
-            tx_bytes24=600,
-            latitude=48.1351,
-            longitude=11.5820,
-            model="UAP-AC-PRO",
-            firmware="4.3.20.11298",
-            uptime=86400,
-            contact="admin@example.com",
-            load_avg=0.5,
-            mem_used=50000,
-            mem_total=100000,
-            mem_buffer=10000,
-            tx_bytes=2600,
-            rx_bytes=1500,
-            gateway="10.0.0.1",
-            gateway6="fe80::1",
-            gateway_nexthop="aabbccddeeff",
-            neighbour_macs=["aa:bb:cc:dd:ee:ff"],
-            domain_code="ffmuc",
+    def test_from_dict(self):
+        """Test reading the unifi keys of the configuration file."""
+        cfg = ControllerConfig.from_dict(
+            {
+                "controller_url": "unifi.example.org",
+                "controller_port": 8443,
+                "username": "user",
+                "password": "secret",
+                "ssid_regex": ".*freifunk.*",
+                "offloader_mac": {"Site": "02:00:00:00:00:01"},
+                "nodelist": "https://map.example.org/meshviewer.json",
+                "version": "UDMP-unifiOS",
+                "ssl_verify": False,
+            }
         )
+        assert cfg.controller_url == "unifi.example.org"
+        assert cfg.version == "UDMP-unifiOS"
+        assert cfg.ssl_verify is False
+        assert cfg.fallback_domain == "unifi_respondd_fallback"
 
-        assert ap.name == "TestAP"
-        assert ap.mac == "00:11:22:33:44:55"
-        assert ap.client_count == 10
-        assert ap.latitude == 48.1351
-        assert ap.longitude == 11.5820
-        assert ap.model == "UAP-AC-PRO"
-        assert ap.domain_code == "ffmuc"
+    def test_from_dict_missing_key(self):
+        """Test that a missing mandatory key raises a KeyError."""
+        with pytest.raises(KeyError):
+            ControllerConfig.from_dict({"controller_url": "unifi.example.org"})
 
 
-class TestAccesspointsDataclass:
-    """Test the Accesspoints dataclass."""
+class TestFrequencyFromChannel:
+    """Test the frequency_from_channel function."""
 
-    def test_accesspoints_creation(self):
-        """Test creating an Accesspoints instance with a list of APs."""
-        ap1 = Accesspoint(
-            name="AP1",
-            mac="00:11:22:33:44:55",
-            snmp_location="Location1",
-            client_count=5,
-            client_count24=3,
-            client_count5=2,
-            channel5=36,
-            rx_bytes5=1000,
-            tx_bytes5=2000,
-            channel24=6,
-            rx_bytes24=500,
-            tx_bytes24=600,
-            latitude=48.1,
-            longitude=11.5,
-            model="UAP-AC-PRO",
-            firmware="4.3.20",
-            uptime=86400,
-            contact="admin@example.com",
-            load_avg=0.5,
-            mem_used=50000,
-            mem_total=100000,
-            mem_buffer=10000,
-            tx_bytes=2600,
-            rx_bytes=1500,
-            gateway="10.0.0.1",
-            gateway6="fe80::1",
-            gateway_nexthop="aabbccddeeff",
-            neighbour_macs=["aa:bb:cc:dd:ee:ff"],
-            domain_code="ffmuc",
-        )
+    @pytest.mark.parametrize(
+        "channel,frequency",
+        [(1, 2412), (6, 2437), (13, 2472), (14, 2484), (36, 5180), (140, 5700)],
+    )
+    def test_known_channels(self, channel, frequency):
+        assert frequency_from_channel(channel) == frequency
 
-        aps = Accesspoints(accesspoints=[ap1])
-        assert len(aps.accesspoints) == 1
-        assert aps.accesspoints[0].name == "AP1"
-
-    def test_accesspoints_empty_list(self):
-        """Test creating an Accesspoints instance with empty list."""
-        aps = Accesspoints(accesspoints=[])
-        assert len(aps.accesspoints) == 0
+    def test_unknown_channel(self):
+        assert frequency_from_channel(20) is None
 
 
 class TestGetClientCountForAp:
@@ -352,7 +303,7 @@ class TestGetLocationByAddress:
         assert lat == pytest.approx(48.1351, rel=1e-4)
         assert lon == pytest.approx(11.5820, rel=1e-4)
 
-    @patch("unifi_respondd.unifi_client.time.sleep")
+    @patch("unified_respondd.backends.unifi.time.sleep")
     def test_geocoding_fallback(self, mock_sleep):
         """Test fallback to geocoding when point parsing fails."""
         address = "Munich, Germany"
@@ -364,8 +315,8 @@ class TestGetLocationByAddress:
         assert lon == "11.5820"
         mock_sleep.assert_called_once_with(1)
 
-    @patch("unifi_respondd.unifi_client.time.sleep")
-    @patch("unifi_respondd.unifi_client.get_location_by_address")
+    @patch("unified_respondd.backends.unifi.time.sleep")
+    @patch("unified_respondd.backends.unifi.get_location_by_address")
     def test_geocoding_failure_recursion(self, mock_get_location, mock_sleep):
         """Test recursion when geocoding fails."""
         address = "Invalid Address"
@@ -383,7 +334,7 @@ class TestGetLocationByAddress:
 class TestScrape:
     """Test the scrape function."""
 
-    @patch("unifi_respondd.unifi_client.rget")
+    @patch("unified_respondd.backends.unifi.rget")
     def test_scrape_success(self, mock_rget):
         """Test successful scraping of JSON data."""
         mock_response = Mock()
@@ -394,8 +345,8 @@ class TestScrape:
         assert result == {"nodes": [{"mac": "00:11:22:33:44:55"}]}
         mock_rget.assert_called_once_with("http://example.com/api")
 
-    @patch("unifi_respondd.unifi_client.rget")
-    @patch("unifi_respondd.unifi_client.logger.error")
+    @patch("unified_respondd.backends.unifi.rget")
+    @patch("unified_respondd.backends.unifi.logger.error")
     def test_scrape_failure(self, mock_logger, mock_rget):
         """Test scraping failure handling."""
         mock_rget.side_effect = Exception("Network error")
@@ -408,49 +359,38 @@ class TestScrape:
 class TestGetInfos:
     """Test the get_infos function (main integration function)."""
 
-    @patch("unifi_respondd.unifi_client.config.load_config")
-    @patch("unifi_respondd.unifi_client.config.Config.from_dict")
-    @patch("unifi_respondd.unifi_client.scrape")
-    @patch("unifi_respondd.unifi_client.Controller")
-    @patch("unifi_respondd.unifi_client.Nominatim")
-    @patch("unifi_respondd.unifi_client.logger.error")
+    @patch("unified_respondd.backends.unifi.scrape")
+    @patch("unified_respondd.backends.unifi.Controller")
+    @patch("unified_respondd.backends.unifi.Nominatim")
+    @patch("unified_respondd.backends.unifi.logger.error")
     def test_get_infos_controller_error(
         self,
         mock_logger,
         mock_nominatim,
         mock_controller,
         mock_scrape,
-        mock_config_from_dict,
-        mock_load_config,
     ):
         """Test get_infos when controller connection fails."""
-        mock_load_config.return_value = {}
         mock_cfg = Mock()
         mock_cfg.nodelist = "http://example.com/nodes.json"
-        mock_config_from_dict.return_value = mock_cfg
         mock_scrape.return_value = {"nodes": []}
         mock_controller.side_effect = Exception("Connection failed")
 
-        result = get_infos()
+        result = get_infos(mock_cfg)
         assert result is None
         mock_logger.assert_called()
 
-    @patch("unifi_respondd.unifi_client.config.load_config")
-    @patch("unifi_respondd.unifi_client.config.Config.from_dict")
-    @patch("unifi_respondd.unifi_client.scrape")
-    @patch("unifi_respondd.unifi_client.Controller")
-    @patch("unifi_respondd.unifi_client.Nominatim")
+    @patch("unified_respondd.backends.unifi.scrape")
+    @patch("unified_respondd.backends.unifi.Controller")
+    @patch("unified_respondd.backends.unifi.Nominatim")
     def test_get_infos_basic_success(
         self,
         mock_nominatim,
         mock_controller,
         mock_scrape,
-        mock_config_from_dict,
-        mock_load_config,
     ):
         """Test get_infos with basic successful execution."""
         # Setup config
-        mock_load_config.return_value = {}
         mock_cfg = Mock()
         mock_cfg.nodelist = "http://example.com/nodes.json"
         mock_cfg.controller_url = "unifi.lan"
@@ -462,7 +402,6 @@ class TestGetInfos:
         mock_cfg.ssid_regex = ".*freifunk.*"
         mock_cfg.offloader_mac = {}
         mock_cfg.fallback_domain = "test_domain"
-        mock_config_from_dict.return_value = mock_cfg
 
         # Setup scrape
         mock_scrape.return_value = {"nodes": []}
@@ -472,19 +411,17 @@ class TestGetInfos:
         mock_controller.return_value = mock_controller_instance
         mock_controller_instance.get_sites.return_value = []
 
-        result = get_infos()
+        result = get_infos(mock_cfg)
         assert result is not None
         assert isinstance(result, Accesspoints)
         assert len(result.accesspoints) == 0
 
-    @patch("unifi_respondd.unifi_client.config.load_config")
-    @patch("unifi_respondd.unifi_client.config.Config.from_dict")
-    @patch("unifi_respondd.unifi_client.scrape")
-    @patch("unifi_respondd.unifi_client.Controller")
-    @patch("unifi_respondd.unifi_client.Nominatim")
-    @patch("unifi_respondd.unifi_client.get_client_count_for_ap")
-    @patch("unifi_respondd.unifi_client.get_ap_channel_usage")
-    @patch("unifi_respondd.unifi_client.get_location_by_address")
+    @patch("unified_respondd.backends.unifi.scrape")
+    @patch("unified_respondd.backends.unifi.Controller")
+    @patch("unified_respondd.backends.unifi.Nominatim")
+    @patch("unified_respondd.backends.unifi.get_client_count_for_ap")
+    @patch("unified_respondd.backends.unifi.get_ap_channel_usage")
+    @patch("unified_respondd.backends.unifi.get_location_by_address")
     def test_get_infos_with_access_points(
         self,
         mock_get_location,
@@ -493,12 +430,9 @@ class TestGetInfos:
         mock_nominatim,
         mock_controller,
         mock_scrape,
-        mock_config_from_dict,
-        mock_load_config,
     ):
         """Test get_infos with access points returned."""
         # Setup config
-        mock_load_config.return_value = {}
         mock_cfg = Mock()
         mock_cfg.nodelist = "http://example.com/nodes.json"
         mock_cfg.controller_url = "unifi.lan"
@@ -510,7 +444,6 @@ class TestGetInfos:
         mock_cfg.ssid_regex = ".*freifunk.*"
         mock_cfg.offloader_mac = {"testsite": "aa:bb:cc:dd:ee:ff"}
         mock_cfg.fallback_domain = "test_domain"
-        mock_config_from_dict.return_value = mock_cfg
 
         # Setup scrape
         mock_scrape.return_value = {
@@ -566,30 +499,33 @@ class TestGetInfos:
         mock_get_channel.return_value = (36, 1000, 2000, None, None, None)
         mock_get_location.return_value = (48.1351, 11.5820)
 
-        result = get_infos()
+        result = get_infos(mock_cfg)
         assert result is not None
         assert isinstance(result, Accesspoints)
         assert len(result.accesspoints) == 1
         assert result.accesspoints[0].name == "TestAP"
         assert result.accesspoints[0].mac == "00:11:22:33:44:55"
         assert result.accesspoints[0].client_count == 5
+        assert result.accesspoints[0].firmware_base == "UniFi"
+        assert result.accesspoints[0].radios == [
+            Radio(frequency=5180, rx_bytes=1000, tx_bytes=2000)
+        ]
+        assert result.accesspoints[0].gateway == "10.0.0.1"
+        assert result.accesspoints[0].gateway_nexthop == "aabbccddeeff"
+        assert result.accesspoints[0].neighbour_macs == ["aa:bb:cc:dd:ee:ff"]
+        assert result.accesspoints[0].domain_code == "ffmuc"
 
-    @patch("unifi_respondd.unifi_client.config.load_config")
-    @patch("unifi_respondd.unifi_client.config.Config.from_dict")
-    @patch("unifi_respondd.unifi_client.scrape")
-    @patch("unifi_respondd.unifi_client.Controller")
-    @patch("unifi_respondd.unifi_client.Nominatim")
+    @patch("unified_respondd.backends.unifi.scrape")
+    @patch("unified_respondd.backends.unifi.Controller")
+    @patch("unified_respondd.backends.unifi.Nominatim")
     def test_get_infos_filters_non_uap_devices(
         self,
         mock_nominatim,
         mock_controller,
         mock_scrape,
-        mock_config_from_dict,
-        mock_load_config,
     ):
         """Test that non-UAP devices are filtered out."""
         # Setup config
-        mock_load_config.return_value = {}
         mock_cfg = Mock()
         mock_cfg.nodelist = "http://example.com/nodes.json"
         mock_cfg.controller_url = "unifi.lan"
@@ -601,7 +537,6 @@ class TestGetInfos:
         mock_cfg.ssid_regex = ".*freifunk.*"
         mock_cfg.offloader_mac = {}
         mock_cfg.fallback_domain = "test_domain"
-        mock_config_from_dict.return_value = mock_cfg
 
         # Setup scrape
         mock_scrape.return_value = {"nodes": []}
@@ -624,27 +559,22 @@ class TestGetInfos:
         mock_controller_instance.get_aps.return_value = [mock_ap]
         mock_controller_instance.get_clients.return_value = []
 
-        result = get_infos()
+        result = get_infos(mock_cfg)
         assert result is not None
         assert isinstance(result, Accesspoints)
         assert len(result.accesspoints) == 0
 
-    @patch("unifi_respondd.unifi_client.config.load_config")
-    @patch("unifi_respondd.unifi_client.config.Config.from_dict")
-    @patch("unifi_respondd.unifi_client.scrape")
-    @patch("unifi_respondd.unifi_client.Controller")
-    @patch("unifi_respondd.unifi_client.Nominatim")
+    @patch("unified_respondd.backends.unifi.scrape")
+    @patch("unified_respondd.backends.unifi.Controller")
+    @patch("unified_respondd.backends.unifi.Nominatim")
     def test_get_infos_filters_aps_without_matching_ssid(
         self,
         mock_nominatim,
         mock_controller,
         mock_scrape,
-        mock_config_from_dict,
-        mock_load_config,
     ):
         """Test that APs without matching SSID are filtered out."""
         # Setup config
-        mock_load_config.return_value = {}
         mock_cfg = Mock()
         mock_cfg.nodelist = "http://example.com/nodes.json"
         mock_cfg.controller_url = "unifi.lan"
@@ -656,7 +586,6 @@ class TestGetInfos:
         mock_cfg.ssid_regex = ".*freifunk.*"
         mock_cfg.offloader_mac = {}
         mock_cfg.fallback_domain = "test_domain"
-        mock_config_from_dict.return_value = mock_cfg
 
         # Setup scrape
         mock_scrape.return_value = {"nodes": []}
@@ -687,7 +616,7 @@ class TestGetInfos:
         mock_controller_instance.get_aps.return_value = [mock_ap]
         mock_controller_instance.get_clients.return_value = []
 
-        result = get_infos()
+        result = get_infos(mock_cfg)
         assert result is not None
         assert isinstance(result, Accesspoints)
         assert len(result.accesspoints) == 0

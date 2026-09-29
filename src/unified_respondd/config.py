@@ -2,13 +2,15 @@
 import dataclasses
 import os
 import sys
-from functools import lru_cache
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Dict
 
 import yaml
 
-UNIFI_RESPONDD_CONFIG_OS_ENV = "UNIFI_RESPONDD_CONFIG_FILE"
-UNIFI_RESPONDD_CONFIG_DEFAULT_LOCATION = "./unifi_respondd.yaml"
+from unified_respondd import backends
+
+# The first entry is the current name, the others are kept for existing deployments.
+CONFIG_OS_ENVS = ("UNIFIED_RESPONDD_CONFIG_FILE", "UNIFI_RESPONDD_CONFIG_FILE")
+CONFIG_DEFAULT_LOCATIONS = ("./unified_respondd.yaml", "./unifi_respondd.yaml")
 
 
 class Error(Exception):
@@ -23,20 +25,12 @@ class ConfigFileNotFoundError(Error):
 class Config:
     """A representation of the configuration file.
     Attributes:
-        controller_url: The unifi controller URL.
-        controller_port: The unifi Controller port.
-        username: The username for unifi controller.
-        password: The password for unifi controller.
+        backend: The name of the controller backend, e.g. "unifi".
+        controller: The backend specific configuration (backend.ControllerConfig).
     """
 
-    controller_url: str
-    controller_port: int
-    username: str
-    password: str
-    ssid_regex: str
-    offloader_mac: Dict[str, str]
-    nodelist: str
-    fallback_domain: str
+    backend: str
+    controller: Any
 
     multicast_address: str
     multicast_port: int
@@ -46,9 +40,6 @@ class Config:
     verbose: bool = False
     multicast_enabled: bool = True
 
-    version: str = "v5"
-    ssl_verify: bool = True
-
     @classmethod
     def from_dict(cls, cfg: Dict[str, str]) -> "Config":
         """Creates a Config object from a configuration file.
@@ -57,18 +48,11 @@ class Config:
         Returns:
             A Config object.
         """
+        backend = cfg.get("backend", backends.DEFAULT_BACKEND)
 
         return cls(
-            controller_url=cfg["controller_url"],
-            controller_port=cfg["controller_port"],
-            username=cfg["username"],
-            password=cfg["password"],
-            ssid_regex=cfg["ssid_regex"],
-            offloader_mac=cfg["offloader_mac"],
-            nodelist=cfg["nodelist"],
-            fallback_domain=cfg.get("fallback_domain", "unifi_respondd_fallback"),
-            version=cfg["version"],
-            ssl_verify=cfg["ssl_verify"],
+            backend=backend,
+            controller=backends.load(backend).ControllerConfig.from_dict(cfg),
             multicast_enabled=cfg["multicast_enabled"],
             multicast_address=cfg["multicast_address"],
             multicast_port=cfg["multicast_port"],
@@ -79,15 +63,17 @@ class Config:
         )
 
 
-@lru_cache(maxsize=10)
-def fetch_from_config(key: str) -> Optional[Union[Dict[str, Any], List[str]]]:
-    """Fetches a specific key from configuration.
-    Arguments:
-        key: The named key to fetch.
-    Returns:
-        The config value associated with the key
+def config_file_path() -> str:
+    """Returns the path of the configuration file.
+    An environment variable takes precedence over the default locations.
     """
-    return load_config().get(key)
+    for env in CONFIG_OS_ENVS:
+        if os.environ.get(env):
+            return os.environ[env]
+    for location in CONFIG_DEFAULT_LOCATIONS:
+        if os.path.isfile(location):
+            return location
+    return CONFIG_DEFAULT_LOCATIONS[0]
 
 
 def load_config() -> Dict[str, str]:
@@ -99,13 +85,13 @@ def load_config() -> Dict[str, str]:
     try:
         config = yaml.safe_load(cfg_contents)
     except yaml.YAMLError as e:
-        print("Failed to load YAML file: %s", e)
+        print(f"Failed to load YAML file: {e}", file=sys.stderr)
         sys.exit(1)
     try:
         _ = Config.from_dict(config)
         return config
-    except (KeyError, TypeError) as e:
-        print("Failed to lint file: %s", e)
+    except (KeyError, TypeError, ValueError, ImportError) as e:
+        print(f"Failed to lint file: {e}", file=sys.stderr)
         sys.exit(2)
 
 
@@ -116,9 +102,7 @@ def fetch_config_from_disk() -> str:
     Returns:
         The file contents as string.
     """
-    config_file = os.environ.get(
-        UNIFI_RESPONDD_CONFIG_OS_ENV, UNIFI_RESPONDD_CONFIG_DEFAULT_LOCATION
-    )
+    config_file = config_file_path()
     try:
         with open(config_file, "r") as stream:
             return stream.read()

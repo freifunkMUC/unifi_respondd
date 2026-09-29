@@ -10,7 +10,7 @@ from typing import Dict, List
 
 from dataclasses_json import dataclass_json
 
-from unifi_respondd import logger, unifi_client
+from unified_respondd import backends, logger
 
 
 @dataclasses.dataclass
@@ -238,6 +238,7 @@ class ResponddClient:
 
     def __init__(self, config):
         self._config = config
+        self._backend = backends.load(config.backend)
         self._aps = None
         self._timeStart = time.time()
         self._timeStop = time.time()
@@ -274,7 +275,9 @@ class ResponddClient:
             nodes.append(
                 NodeInfo(
                     software=SoftwareInfo(
-                        firmware=FirmwareInfo(base="UniFi", release=ap.firmware)
+                        firmware=FirmwareInfo(
+                            base=ap.firmware_base, release=ap.firmware
+                        )
                     ),
                     hostname=ap.name,
                     node_id=ap.mac.replace(":", ""),
@@ -292,42 +295,17 @@ class ResponddClient:
             )
         return nodes
 
-    @staticmethod
-    def frequency_from_channel(channel):
-        if channel >= 36:
-            return 5000 + (channel) * 5
-        else:
-            if channel == 14:
-                return 2484
-            elif channel < 14:
-                return 2407 + (channel) * 5
-
     def getStatistics(self):
         """This method returns the statistics information of all APs."""
         aps = self._aps
         statistics = []
         for ap in aps.accesspoints:
-            wirelessinfos = []
-
-            if ap.channel5:
-                frequency5 = self.frequency_from_channel(ap.channel5)
-                wirelessinfos.append(
-                    WirelessInfo(
-                        frequency=frequency5,
-                        rx=ap.rx_bytes5,
-                        tx=ap.tx_bytes5,
-                    )
+            wirelessinfos = [
+                WirelessInfo(
+                    frequency=radio.frequency, rx=radio.rx_bytes, tx=radio.tx_bytes
                 )
-
-            if ap.channel24:
-                frequency24 = self.frequency_from_channel(ap.channel24)
-                wirelessinfos.append(
-                    WirelessInfo(
-                        frequency=frequency24,
-                        rx=ap.rx_bytes5,
-                        tx=ap.tx_bytes5,
-                    )
-                )
+                for radio in ap.radios
+            ]
 
             statistics.append(
                 StatisticsInfo(
@@ -413,7 +391,7 @@ class ResponddClient:
             else:
                 self.sendUnicast()
             self._timeStart = time.time()
-            self._aps = unifi_client.get_infos()
+            self._aps = self._backend.get_infos(self._config.controller)
             if self._aps is None:
                 continue
             if msgSplit[0] == "GET":  # multi_request

@@ -3,79 +3,60 @@
 import dataclasses
 import re
 import time
-from typing import List
+from typing import Dict
 
 from geopy.geocoders import Nominatim
 from geopy.point import Point
 from pyunifi.controller import Controller
 from requests import get as rget
 
-from unifi_respondd import config, logger
+from unified_respondd import logger
+from unified_respondd.model import Accesspoint, Accesspoints, Radio
 
 ffnodes = None
 
 
 @dataclasses.dataclass
-class Accesspoint:
-    """This class contains the information of an AP.
+class ControllerConfig:
+    """The unifi specific part of the configuration file.
     Attributes:
-        name: The name of the AP (alias in the unifi controller).
-        mac: The MAC address of the AP.
-        snmp_location: The location of the AP (SNMP location in the unifi controller).
-        client_count: The number of clients connected to the AP.
-        client_count24: The number of clients connected to the AP via 2,4 GHz.
-        client_count5: The number of clients connected to the AP via 5 GHz.
-        latitude: The latitude of the AP.
-        longitude: The longitude of the AP.
-        model: The hardware model of the AP.
-        firmware: The firmware information of the AP.
-        uptime: The uptime of the AP.
-        contact: The contact of the AP for example an email address.
-        load_avg: The load average of the AP.
-        mem_used: The used memory of the AP.
-        mem_total: The total memory of the AP.
-        mem_buffer: The buffer memory of the AP.
-        tx_bytes: The transmitted bytes of the AP.
-        rx_bytes: The received bytes of the AP."""
+        controller_url: The unifi controller URL.
+        controller_port: The unifi Controller port.
+        username: The username for unifi controller.
+        password: The password for unifi controller.
+        ssid_regex: Only APs broadcasting a matching SSID are reported.
+        offloader_mac: The MAC of the offloader per site name.
+        nodelist: The meshviewer.json URL to look up the offloaders.
+        fallback_domain: The domain used if no offloader is found.
+        version: The controller version passed to pyunifi.
+        ssl_verify: Whether to verify the TLS certificate of the controller.
+    """
 
-    name: str
-    mac: str
-    snmp_location: str
-    client_count: int
-    client_count24: int
-    client_count5: int
-    channel5: int
-    rx_bytes5: bytes
-    tx_bytes5: bytes
-    channel24: int
-    rx_bytes24: bytes
-    tx_bytes24: bytes
-    latitude: float
-    longitude: float
-    model: str
-    firmware: str
-    uptime: int
-    contact: str
-    load_avg: float
-    mem_used: int
-    mem_total: int
-    mem_buffer: int
-    tx_bytes: int
-    rx_bytes: int
-    gateway: str
-    gateway6: str
-    gateway_nexthop: str
-    neighbour_macs: List[str]
-    domain_code: str
+    controller_url: str
+    controller_port: int
+    username: str
+    password: str
+    ssid_regex: str
+    offloader_mac: Dict[str, str]
+    nodelist: str
+    fallback_domain: str
+    version: str = "v5"
+    ssl_verify: bool = True
 
-
-@dataclasses.dataclass
-class Accesspoints:
-    """This class contains the information of all APs.
-    Attributes:
-        accesspoints: A list of Accesspoint objects."""
-
-    accesspoints: List[Accesspoint]
+    @classmethod
+    def from_dict(cls, cfg: Dict[str, str]) -> "ControllerConfig":
+        return cls(
+            controller_url=cfg["controller_url"],
+            controller_port=cfg["controller_port"],
+            username=cfg["username"],
+            password=cfg["password"],
+            ssid_regex=cfg["ssid_regex"],
+            offloader_mac=cfg["offloader_mac"],
+            nodelist=cfg["nodelist"],
+            fallback_domain=cfg.get("fallback_domain", "unifi_respondd_fallback"),
+            version=cfg["version"],
+            ssl_verify=cfg["ssl_verify"],
+        )
 
 
 def get_client_count_for_ap(ap_mac, clients, cfg):
@@ -117,6 +98,17 @@ def get_ap_channel_usage(ssids, cfg):
     return channel5, rx_bytes5, tx_bytes5, channel24, rx_bytes24, tx_bytes24
 
 
+def frequency_from_channel(channel):
+    """This function returns the frequency in MHz of a WiFi channel."""
+    if channel >= 36:
+        return 5000 + (channel) * 5
+    else:
+        if channel == 14:
+            return 2484
+        elif channel < 14:
+            return 2407 + (channel) * 5
+
+
 def get_location_by_address(address, app, attempts=3):
     """This function returns latitude and longitude of a given address."""
     try:
@@ -141,9 +133,8 @@ def scrape(url):
         logger.error("Error: %s" % (ex))
 
 
-def get_infos():
+def get_infos(cfg):
     """This function gathers all the information and returns a list of Accesspoint objects."""
-    cfg = config.Config.from_dict(config.load_config())
     ffnodes = scrape(cfg.nodelist)
     try:
         c = Controller(
@@ -225,8 +216,9 @@ def get_infos():
                         )
                         offloader = list(
                             filter(
-                                lambda x: x["mac"]
-                                == cfg.offloader_mac.get(site["desc"], ""),
+                                lambda x: (
+                                    x["mac"] == cfg.offloader_mac.get(site["desc"], "")
+                                ),
                                 ffnodes["nodes"],
                             )
                         )[0]
@@ -234,6 +226,23 @@ def get_infos():
                         offloader_id = None
                         offloader = {}
                         pass
+                    radios = []
+                    if channel5:
+                        radios.append(
+                            Radio(
+                                frequency=frequency_from_channel(channel5),
+                                rx_bytes=rx_bytes5,
+                                tx_bytes=tx_bytes5,
+                            )
+                        )
+                    if channel24:
+                        radios.append(
+                            Radio(
+                                frequency=frequency_from_channel(channel24),
+                                rx_bytes=rx_bytes24,
+                                tx_bytes=tx_bytes24,
+                            )
+                        )
                     uplink = ap.get("uplink", None)
                     if uplink is not None and uplink.get("ap_mac", None) is not None:
                         neighbour_macs.append(uplink.get("ap_mac"))
@@ -246,20 +255,14 @@ def get_infos():
                         Accesspoint(
                             name=ap.get("name", None),
                             mac=ap.get("mac", None),
-                            snmp_location=ap.get("snmp_location", None),
                             client_count=client_count,
                             client_count24=client_count24,
                             client_count5=client_count5,
-                            channel5=channel5,
-                            rx_bytes5=rx_bytes5,
-                            tx_bytes5=tx_bytes5,
-                            channel24=channel24,
-                            rx_bytes24=rx_bytes24,
-                            tx_bytes24=tx_bytes24,
                             latitude=float(lat),
                             longitude=float(lon),
                             model=ap.get("model", None),
                             firmware=ap.get("version", None),
+                            firmware_base="UniFi",
                             uptime=ap.get("uptime", None),
                             contact=ap.get("snmp_contact", None),
                             load_avg=float(
@@ -275,6 +278,7 @@ def get_infos():
                             gateway_nexthop=offloader_id,
                             neighbour_macs=neighbour_macs,
                             domain_code=offloader.get("domain", cfg.fallback_domain),
+                            radios=radios,
                         )
                     )
     return aps
@@ -282,7 +286,9 @@ def get_infos():
 
 def main():
     """This function is the main function, it's only executed if we aren't imported."""
-    print(get_infos())
+    from unified_respondd import config
+
+    print(get_infos(config.Config.from_dict(config.load_config()).controller))
 
 
 if __name__ == "__main__":
