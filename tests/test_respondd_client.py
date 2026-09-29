@@ -93,6 +93,28 @@ class TestStatistics:
             ],
         }
 
+    def test_missing_telemetry(self, client):
+        ap = make_ap(
+            client_count=None,
+            client_count24=None,
+            client_count5=None,
+            mem_total=None,
+            tx_bytes=None,
+            rx_bytes=None,
+        )
+        client._aps = Accesspoints(accesspoints=[ap])
+        statistics = client.getStatistics()[0].to_dict()
+        assert statistics["clients"] is None
+        assert statistics["memory"] is None
+        assert statistics["traffic"] is None
+
+    def test_partial_traffic(self, client):
+        client._aps = Accesspoints(accesspoints=[make_ap(tx_bytes=None)])
+        assert client.getStatistics()[0].to_dict()["traffic"] == {
+            "tx": {"bytes": 0},
+            "rx": {"bytes": 1000},
+        }
+
     def test_no_radios(self, client):
         client._aps = Accesspoints(accesspoints=[make_ap(radios=[])])
         assert client.getStatistics()[0].wireless == []

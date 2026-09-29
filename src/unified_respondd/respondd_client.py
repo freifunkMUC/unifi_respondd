@@ -206,12 +206,12 @@ class StatisticsInfo:
         gateway_nexthop: The MAC of the nexthop Gateway
         wireless: The WirelessInfos of the AP"""
 
-    clients: ClientInfo
+    clients: Optional[ClientInfo]
     uptime: int
     node_id: str
     loadavg: float
-    memory: MemoryInfo
-    traffic: TrafficInfo
+    memory: Optional[MemoryInfo]
+    traffic: Optional[TrafficInfo]
     gateway: str
     gateway6: str
     gateway_nexthop: str
@@ -310,26 +310,37 @@ class ResponddClient:
                 for radio in ap.radios
             ]
 
+            # Not every device reports all telemetry (e.g. UISP blackBox devices)
+            clients = None
+            if ap.client_count is not None:
+                clients = ClientInfo(
+                    total=ap.client_count,
+                    wifi=ap.client_count,
+                    wifi24=ap.client_count24,
+                    wifi5=ap.client_count5,
+                )
+            memory = None
+            if ap.mem_total is not None:
+                memory = MemoryInfo(
+                    total=int(ap.mem_total / 1024),
+                    free=int((ap.mem_total - (ap.mem_used or 0)) / 1024),
+                    buffers=int((ap.mem_buffer or 0) / 1024),
+                )
+            traffic = None
+            if ap.tx_bytes is not None or ap.rx_bytes is not None:
+                traffic = TrafficInfo(
+                    tx=txInfo(bytes=int(ap.tx_bytes or 0)),
+                    rx=rxInfo(bytes=int(ap.rx_bytes or 0)),
+                )
+
             statistics.append(
                 StatisticsInfo(
-                    clients=ClientInfo(
-                        total=ap.client_count,
-                        wifi=ap.client_count,
-                        wifi24=ap.client_count24,
-                        wifi5=ap.client_count5,
-                    ),
+                    clients=clients,
                     uptime=ap.uptime,
                     node_id=ap.mac.replace(":", ""),
                     loadavg=ap.load_avg,
-                    memory=MemoryInfo(
-                        total=int(ap.mem_total / 1024),
-                        free=int((ap.mem_total - ap.mem_used) / 1024),
-                        buffers=int(ap.mem_buffer / 1024),
-                    ),
-                    traffic=TrafficInfo(
-                        tx=txInfo(bytes=int(ap.tx_bytes)),
-                        rx=rxInfo(bytes=int(ap.rx_bytes)),
-                    ),
+                    memory=memory,
+                    traffic=traffic,
                     gateway=ap.gateway,
                     gateway6=ap.gateway6,
                     gateway_nexthop=ap.gateway_nexthop,

@@ -7,6 +7,7 @@ from geopy.point import Point
 from requests import get as rget
 
 from unified_respondd import logger
+from unified_respondd.backends import REQUEST_TIMEOUT
 
 
 def get_location_by_address(address, app, attempts=3):
@@ -28,7 +29,7 @@ def get_location_by_address(address, app, attempts=3):
 def scrape(url):
     """returns remote json"""
     try:
-        return rget(url).json()
+        return rget(url, timeout=REQUEST_TIMEOUT).json()
     except Exception as ex:
         logger.error("Error: %s" % (ex))
 

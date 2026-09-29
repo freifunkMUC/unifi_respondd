@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 """Unit tests for unified_respondd/config.py and backend selection."""
 
+import subprocess
+import sys
 from unittest.mock import patch
 
 import pytest
@@ -105,3 +107,41 @@ class TestLoadConfig:
         path.write_text(yaml.safe_dump(UNIFI_CONFIG))
         monkeypatch.setenv("UNIFIED_RESPONDD_CONFIG_FILE", str(path))
         assert config.load_config()["username"] == "user"
+
+
+class TestCredentialsNotInRepr:
+    """Credentials must not end up in logs when a config is printed."""
+
+    def test_unifi(self):
+        cfg = config.Config.from_dict(UNIFI_CONFIG)
+        assert "secret" not in repr(cfg)
+
+    def test_omada(self):
+        from unified_respondd.backends import omada
+
+        cfg = omada.ControllerConfig.from_dict(
+            {**UNIFI_CONFIG, "controller_url": "https://omada.example.org:8043"}
+        )
+        assert "secret" not in repr(cfg)
+
+    def test_uisp(self):
+        from unified_respondd.backends import uisp
+
+        cfg = uisp.ControllerConfig.from_dict(
+            {"controller_url": "https://uisp.example.org", "token": "secret"}
+        )
+        assert "secret" not in repr(cfg)
+
+
+@pytest.mark.parametrize(
+    "backend,missing",
+    [("uisp", ["geopy", "pyunifi"]), ("omada", ["pyunifi"])],
+)
+def test_backend_imports_only_its_extra(backend, missing):
+    """A backend must work with only the dependencies of its extra installed."""
+    code = (
+        "import sys\n"
+        f"sys.modules.update(dict.fromkeys({missing!r}))\n"
+        f"import unified_respondd.backends.{backend}\n"
+    )
+    subprocess.run([sys.executable, "-c", code], check=True)

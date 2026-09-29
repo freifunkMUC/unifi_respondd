@@ -64,7 +64,7 @@ class TestScrape:
 
         result = scrape("http://example.com/api")
         assert result == {"nodes": [{"mac": "00:11:22:33:44:55"}]}
-        mock_rget.assert_called_once_with("http://example.com/api")
+        mock_rget.assert_called_once_with("http://example.com/api", timeout=30)
 
     @patch("unified_respondd.backends.common.rget")
     @patch("unified_respondd.backends.common.logger.error")
