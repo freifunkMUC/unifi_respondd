@@ -220,7 +220,7 @@ def get_accesspoint(cb, site_name, ap, cfg, ffnodes, geolookup):
     if ssids is not None:
         for ssid in ssids:
             if re.search(cfg.ssid_regex, ssid.get("ssid", ""), re.IGNORECASE):
-                if ssid.get("ssidEnabled", False):
+                if ssid.get("ssidEnabled", True):
                     containsSSID = True
 
     if containsSSID is False:

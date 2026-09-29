@@ -46,7 +46,7 @@ UNIFIED_RESPONDD_CONFIG_FILE=/etc/unified_respondd.yaml unified-respondd --dry-r
 
 Behaviour changes compared to omada_respondd:
 
-- APs whose Freifunk SSID is disabled are no longer reported.
+- APs whose Freifunk SSID is disabled (`ssidEnabled: false`) are no longer reported.
 - APs without an SNMP location are reported (with the location from the controller, or 0/0).
 - The uplink neighbour MAC is lowercase, so it matches the node MAC.
 - One login per query for all sites, followed by a logout.
