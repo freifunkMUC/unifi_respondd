@@ -36,7 +36,8 @@ def scrape(url, token):
         return rget(
             url, headers={"X-Auth-Token": token}, timeout=REQUEST_TIMEOUT
         ).json()
-    except Exception:
+    except Exception as ex:
+        logger.error("Error: %s" % (ex))
         return ""
 
 

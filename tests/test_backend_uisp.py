@@ -127,8 +127,10 @@ class TestScrape:
         )
 
     @patch("unified_respondd.backends.uisp.rget", side_effect=Exception("timeout"))
-    def test_error(self, rget):
-        assert uisp.scrape(BASE + "/devices", "t") == ""
+    def test_error_is_logged(self, rget):
+        with patch.object(uisp.logger, "error") as error:
+            assert uisp.scrape(BASE + "/devices", "t") == ""
+        error.assert_called_once()
 
 
 class TestHelpers:
