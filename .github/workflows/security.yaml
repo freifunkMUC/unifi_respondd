@@ -1,0 +1,45 @@
+name: Security
+
+on:
+  push:
+  pull_request:
+  schedule:
+    # weekly, new advisories show up without changes to the code
+    - cron: "23 4 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  pip-audit:
+    name: Known vulnerabilities in dependencies
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.13"
+      - name: Install pip-audit
+        run: |
+          python -m pip install --upgrade pip
+          pip install $(grep '^pip-audit==' requirements-dev.txt)
+      - name: Audit the runtime dependencies of all backends
+        run: pip-audit -r requirements.txt
+      - name: Audit the development dependencies
+        run: pip-audit -r requirements-dev.txt
+
+  bandit:
+    name: Static security analysis
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.13"
+      - name: Install bandit
+        run: |
+          python -m pip install --upgrade pip
+          pip install "$(grep '^bandit\[toml\]==' requirements-dev.txt)"
+      - name: Run bandit
+        run: bandit -c pyproject.toml -r src

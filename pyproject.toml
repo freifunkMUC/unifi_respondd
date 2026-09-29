@@ -44,6 +44,10 @@ local_scheme = "no-local-version"
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 
+[tool.bandit]
+# Vendored third party code, kept as close to upstream as possible
+exclude_dirs = ["src/unified_respondd/backends/_omada_api.py"]
+
 [tool.ruff]
 line-length = 88
 # Vendored third party code, kept as close to upstream as possible
