@@ -63,9 +63,8 @@ def get_location(json):
         return 0, 0
 
 
-def get_apDevice(json, cfg):
+def get_apDevice(json, links):
     """returns apDevice"""
-    links = scrape(cfg.controller_url + "/data-links", cfg.token)
     if links:
         for link in links:
             if link["from"]["device"]["identification"]["name"] == get_hostname(json):
@@ -441,6 +440,7 @@ def get_infos(cfg):
     neighbour_names = {}
     devices = scrape(cfg.controller_url + "/devices", cfg.token)
     if devices:
+        links = scrape(cfg.controller_url + "/data-links", cfg.token)
         for device in devices:
             hostname = get_hostname(device)
             if "Router" not in hostname:
@@ -530,7 +530,7 @@ def get_infos(cfg):
                     client_count5=0 if client_total is not None else None,
                 )
                 aps.accesspoints.append(ap)
-                neighbour_names[ap.mac] = get_apDevice(device, cfg)
+                neighbour_names[ap.mac] = get_apDevice(device, links)
 
     # UISP links devices by name, respondd by MAC
     for ap in aps.accesspoints:

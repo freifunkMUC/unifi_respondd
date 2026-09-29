@@ -224,6 +224,10 @@ class TestGetInfos:
         assert aps[1].neighbour_macs == ["fc:ec:da:00:00:01"]
         assert aps[2].neighbour_macs == []
 
+    def test_links_fetched_once(self, cfg, api):
+        get_infos(cfg)
+        assert api["requests"].count("/data-links") == 1
+
     def test_link_to_unknown_device(self, cfg, api):
         api["links"] = [link("AF-A", "GONE")]
         assert get_infos(cfg).accesspoints[0].neighbour_macs == []
