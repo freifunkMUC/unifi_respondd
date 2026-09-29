@@ -27,10 +27,10 @@ Install the package together with the dependencies of your backend, e.g. into `/
 
 ```sh
 python3 -m venv /opt/unified-respondd
-/opt/unified-respondd/bin/pip install 'unified_respondd[unifi] @ git+https://github.com/freifunkMUC/unified_respondd'
+/opt/unified-respondd/bin/pip install 'unified_respondd[unifi]'
 ```
 
-Use `[omada]` or `[uisp]` for the other backends, or once a release is on PyPI simply `pip install 'unified_respondd[unifi]'`.
+Use `[omada]` or `[uisp]` for the other backends, several extras can be combined (`[unifi,omada,uisp]`). Pin the version for reproducible deployments, e.g. `'unified_respondd[unifi]==0.1.0'`. The development version can be installed from git: `pip install 'unified_respondd[unifi] @ git+https://github.com/freifunkMUC/unified_respondd'`.
 
 Running `./respondd.py` from a checkout (after `pip install -r requirements.txt`) keeps working for existing deployments.
 
@@ -137,7 +137,7 @@ It exits with 1 if a controller couldn't be queried, the data of the other contr
 
 - **Logging:** Everything is logged to stderr, with systemd to the journal: `journalctl -u unified-respondd@unifi`. Failed controller or nodelist requests are logged as `ERROR`, with several controllers as `Could not fetch the APs of controller <name>`. The query is retried in the next interval. The format and level can be changed with `logging_config`.
 - **Monitoring:** systemd restarts the service if it exits (`Restart=always`). HTTP requests time out after 30 seconds, so a hanging controller doesn't block the service. `unified-respondd --dry-run` can be used as a check, it fails if a controller is unreachable. Whether the nodes are current can be seen on the map or in yanic.
-- **Rollback:** Install the previous version (`pip install 'unified_respondd[…] @ git+https://github.com/freifunkMUC/unified_respondd@<tag>'` or check out the previous tag) and restart the service. When migrating from `omada_respondd` or `uisp_respondd`, keep the old installation and leave `controller_port` in the config until the new service runs fine: the old versions require it and ignore the new `backend` key.
+- **Rollback:** Install the previous version (`pip install 'unified_respondd[…]==<version>'`, see the [release history](https://pypi.org/project/unified-respondd/#history), or check out the previous tag) and restart the service. When migrating from `omada_respondd` or `uisp_respondd`, keep the old installation and leave `controller_port` in the config until the new service runs fine: the old versions require it and ignore the new `backend` key.
 
 ## Migrating
 
