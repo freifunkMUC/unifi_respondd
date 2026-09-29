@@ -86,11 +86,19 @@ class TestConfigFilePath:
 
 
 class TestLoadConfig:
-    def test_invalid_config_exits(self):
+    def test_invalid_config_exits(self, capsys):
         with patch.object(config, "fetch_config_from_disk", return_value="foo: bar"):
             with pytest.raises(SystemExit) as e:
                 config.load_config()
         assert e.value.code == 2
+        assert capsys.readouterr().err == "Failed to lint file: 'controller_url'\n"
+
+    def test_invalid_yaml_exits(self, capsys):
+        with patch.object(config, "fetch_config_from_disk", return_value="foo: ["):
+            with pytest.raises(SystemExit) as e:
+                config.load_config()
+        assert e.value.code == 1
+        assert capsys.readouterr().err.startswith("Failed to load YAML file: ")
 
     def test_valid_config(self, tmp_path, monkeypatch):
         path = tmp_path / "cfg.yaml"

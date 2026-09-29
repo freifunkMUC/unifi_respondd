@@ -85,13 +85,13 @@ def load_config() -> Dict[str, str]:
     try:
         config = yaml.safe_load(cfg_contents)
     except yaml.YAMLError as e:
-        print("Failed to load YAML file: %s", e)
+        print(f"Failed to load YAML file: {e}", file=sys.stderr)
         sys.exit(1)
     try:
         _ = Config.from_dict(config)
         return config
     except (KeyError, TypeError, ValueError, ImportError) as e:
-        print("Failed to lint file: %s", e)
+        print(f"Failed to lint file: {e}", file=sys.stderr)
         sys.exit(2)
 
 
