@@ -1,3 +1,4 @@
+backend: unifi
 controller_url: unifi.lan
 controller_port: 8443
 username: ubnt

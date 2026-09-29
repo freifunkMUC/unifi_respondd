@@ -1,12 +1,38 @@
-# unifi_respondd
+# unified_respondd
 
-This queries the API of a UniFi controller to get the current status of the Accesspoints and sends the information via the respondd protocol. Thus it can be picked up by `yanic` and other respondd queriers.
+This queries the API of a WiFi controller to get the current status of the Accesspoints and sends the information via the respondd protocol. Thus it can be picked up by `yanic` and other respondd queriers.
+
+Supported controllers (backends):
+
+| Backend | Controller |
+|---------|------------|
+| `unifi` | UniFi Network controller |
+
+## Installation
+
+Install the package together with the dependencies of your backend:
+
+```sh
+pip install 'unified_respondd[unifi]'
+UNIFIED_RESPONDD_CONFIG_FILE=/etc/unified_respondd.yaml unified-respondd
+```
+
+Running `./respondd.py` from a checkout (after `pip install -r requirements.txt`) keeps working for existing deployments.
+
+## Choosing the backend
+
+Set `backend` in the config file. It defaults to `unifi`, so existing `unifi_respondd` configs work unchanged.
+
+The config file is looked up in this order:
+
+1. `UNIFIED_RESPONDD_CONFIG_FILE`, then the legacy `UNIFI_RESPONDD_CONFIG_FILE`
+2. `./unified_respondd.yaml`, then the legacy `./unifi_respondd.yaml`
 
 ## Overview
 
 ```mermaid
 graph TD;
-	A{"*respondd_main*"} -->| | B("*unifi_client*")
+	A{"*respondd_main*"} -->| | B("*backend (unifi)*")
     A -->| | C("*respondd_client*")
 	B -->|"RestFul API"| D("unifi_controller")
     C -->|"Subscribe"| E("multicast")
@@ -17,6 +43,7 @@ graph TD;
 
 ## Config File:
 ```yaml
+backend: unifi
 controller_url: unifi.lan
 controller_port: 8443
 username: ubnt
@@ -49,6 +76,14 @@ logging_config:
       level: DEBUG
     version: 1
 fallback_domain: "unifi_respondd_fallback"  # optional
+```
+
+## Development
+
+```sh
+pip install -r requirements-dev.txt -e '.[unifi]'
+pytest
+ruff check . && ruff format --check .
 ```
 
 ## Linking an Offloader to an Unifi Site by MAC Address
