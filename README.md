@@ -135,8 +135,8 @@ It exits with 1 if a controller couldn't be queried, the data of the other contr
 
 ## Operations
 
-- **Logging:** Everything is logged to stderr, with systemd to the journal: `journalctl -u unified-respondd@unifi`. Failed controller or nodelist requests are logged as `ERROR`, with several controllers as `Could not fetch the APs of controller <name>`. The query is retried in the next interval. The format and level can be changed with `logging_config`.
-- **Monitoring:** systemd restarts the service if it exits (`Restart=always`). HTTP requests time out after 30 seconds, so a hanging controller doesn't block the service. `unified-respondd --dry-run` can be used as a check, it fails if a controller is unreachable. Whether the nodes are current can be seen on the map or in yanic.
+- **Logging:** Everything is logged to stderr, with systemd to the journal: `journalctl -u unified-respondd@unifi`. Failed controller or nodelist requests are logged as `ERROR`, with several controllers as `Could not fetch the APs of controller <name>`. The query is retried in the next interval. The default level is `INFO`, the sent data (including the contact fields) is only logged at `DEBUG`. The format and level can be changed with `logging_config`.
+- **Monitoring:** systemd restarts the service if it exits (`Restart=always`). HTTP requests time out after 30 seconds, also those of pyunifi and the Omada client, so a hanging controller doesn't block the service. In multicast mode the controllers are queried at most every 30 seconds, requests in between are answered from that query, and malformed requests are ignored. `unified-respondd --dry-run` can be used as a check, it fails if a controller is unreachable. Whether the nodes are current can be seen on the map or in yanic.
 - **Rollback:** Install the previous version (`pip install 'unified_respondd[…]==<version>'`, see the [release history](https://pypi.org/project/unified-respondd/#history), or check out the previous tag) and restart the service. When migrating from `omada_respondd` or `uisp_respondd`, keep the old installation and leave `controller_port` in the config until the new service runs fine: the old versions require it and ignore the new `backend` key.
 
 ## Migrating
@@ -258,6 +258,10 @@ ruff check . && ruff format --check .
 ```
 
 A new backend is a module in `src/unified_respondd/backends/` implementing the `Backend` protocol from `backends/__init__.py` (a `ControllerConfig` dataclass and `get_infos(cfg)` returning `model.Accesspoints`) and registered in `BACKENDS` there. A test checks every registered backend against the protocol.
+
+## Security
+
+The CI checks the pinned dependencies for known vulnerabilities with `pip-audit` and the code with `bandit`, on every push and pull request and weekly for new advisories. Dependabot keeps the dependencies and GitHub Actions up to date. Please report vulnerabilities privately to the maintainers instead of opening a public issue.
 
 ## Ownership
 
