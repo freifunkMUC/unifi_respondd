@@ -269,48 +269,45 @@ def get_aps(cb, cfg, ffnodes):
                         lon = location["longitude"]
                         lat = location["latitude"]
 
-                snmp = moreAPInfos.get("snmp", None)
-                if snmp.get("location", None) is not None:
-                    if snmp.get("location", None) != "":
-                        try:
-                            lat, lon = get_location_by_address(
-                                snmp["location"], geolookup
-                            )
-                        except Exception:
-                            pass
+                snmp = moreAPInfos.get("snmp", None) or {}
+                if snmp.get("location", None):
+                    try:
+                        lat, lon = get_location_by_address(snmp["location"], geolookup)
+                    except Exception:
+                        pass
 
-                    aps.accesspoints.append(
-                        Accesspoint(
-                            name=ap.get("name", None),
-                            mac=ap_mac.replace("-", ":").lower(),
-                            client_count=client_count,
-                            client_count24=client_count24,
-                            client_count5=client_count5,
-                            latitude=float(lat),
-                            longitude=float(lon),
-                            model=ap.get("showModel", None),
-                            firmware=ap.get("version", None),
-                            firmware_base="Omada",
-                            uptime=moreAPInfos.get("uptimeLong", None),
-                            contact=snmp.get("contact", None),
-                            load_avg=_extract_loadavg(ap, moreAPInfos),
-                            mem_used=mem_used,
-                            mem_buffer=mem_buffer,
-                            mem_total=mem_total,
-                            tx_bytes=tx,
-                            rx_bytes=rx,
-                            gateway=offloader.get("gateway", None),
-                            gateway6=offloader.get("gateway6", None),
-                            gateway_nexthop=offloader_id,
-                            neighbour_macs=neighbour_macs,
-                            domain_code=offloader.get("domain", cfg.fallback_domain),
-                            radios=[
-                                Radio(frequency=frequency)
-                                for frequency in (frequency24, frequency5)
-                                if frequency
-                            ],
-                        )
+                aps.accesspoints.append(
+                    Accesspoint(
+                        name=ap.get("name", None),
+                        mac=ap_mac.replace("-", ":").lower(),
+                        client_count=client_count,
+                        client_count24=client_count24,
+                        client_count5=client_count5,
+                        latitude=float(lat),
+                        longitude=float(lon),
+                        model=ap.get("showModel", None),
+                        firmware=ap.get("version", None),
+                        firmware_base="Omada",
+                        uptime=moreAPInfos.get("uptimeLong", None),
+                        contact=snmp.get("contact", None),
+                        load_avg=_extract_loadavg(ap, moreAPInfos),
+                        mem_used=mem_used,
+                        mem_buffer=mem_buffer,
+                        mem_total=mem_total,
+                        tx_bytes=tx,
+                        rx_bytes=rx,
+                        gateway=offloader.get("gateway", None),
+                        gateway6=offloader.get("gateway6", None),
+                        gateway_nexthop=offloader_id,
+                        neighbour_macs=neighbour_macs,
+                        domain_code=offloader.get("domain", cfg.fallback_domain),
+                        radios=[
+                            Radio(frequency=frequency)
+                            for frequency in (frequency24, frequency5)
+                            if frequency
+                        ],
                     )
+                )
     return aps
 
 

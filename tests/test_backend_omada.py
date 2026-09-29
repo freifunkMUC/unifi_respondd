@@ -228,6 +228,17 @@ class TestGetInfos:
             ap = get_infos(cfg).accesspoints[0]
         assert (ap.latitude, ap.longitude) == (48.2, 11.6)
 
+    @pytest.mark.parametrize("snmp", [{}, {"snmp": None}, {"snmp": {}}])
+    def test_ap_without_snmp_location(self, cfg, fake_omada, snmp):
+        details = {**DETAILS["02-00-00-00-00-10"], "location": None}
+        del details["snmp"]
+        details.update(snmp)
+        with patch.dict(DETAILS, {"02-00-00-00-00-10": details}):
+            aps = get_infos(cfg).accesspoints
+        assert [ap.name for ap in aps] == ["ap1"]
+        assert (aps[0].latitude, aps[0].longitude) == (0.0, 0.0)
+        assert aps[0].contact is None
+
     def test_fallback_domain_without_offloader(self, cfg, fake_omada):
         cfg.offloader_mac = {}
         cfg.fallback_domain = "fallback"
