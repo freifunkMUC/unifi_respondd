@@ -2,6 +2,7 @@
 """Unit tests for unified_respondd/respondd_client.py module."""
 
 import json
+import socket
 import zlib
 from unittest.mock import Mock, patch
 
@@ -323,6 +324,17 @@ class TestMulticastLoop:
         with pytest.raises(KeyboardInterrupt):
             client.start()
         return [call.args for call in client._sock.sendto.call_args_list]
+
+    def test_socket_is_bound_to_the_interface_first(self, multicast):
+        """The wildcard bind is only safe with SO_BINDTODEVICE set before."""
+        self.run(multicast)
+        calls = [call[0] for call in multicast._sock.method_calls]
+        assert calls.index("setsockopt") < calls.index("bind")
+        assert multicast._sock.setsockopt.call_args_list[0].args == (
+            socket.SOL_SOCKET,
+            socket.SO_BINDTODEVICE,
+            b"eth0",
+        )
 
     def test_invalid_requests_are_ignored(self, multicast):
         sent = self.run(multicast, b"\xff\xfe", b"foo", b"GET", b"GET nodeinfo")

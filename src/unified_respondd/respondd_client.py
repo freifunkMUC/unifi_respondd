@@ -449,6 +449,10 @@ class ResponddClient:
 
     def start(self):
         """This method starts the respondd client."""
+        # Only packets of the configured interface (e.g. bat0) reach the socket, so
+        # binding to "::" below doesn't expose it on other interfaces. The wildcard
+        # is needed to answer yanic's unicast requests to nodes that didn't answer
+        # the multicast request, binding to the group would drop those.
         self._sock.setsockopt(
             socket.SOL_SOCKET,
             socket.SO_BINDTODEVICE,
