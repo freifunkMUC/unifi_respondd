@@ -81,6 +81,29 @@ Keys of the backends:
 
 With `skip`, links of other nodes to a skipped AP still show up in their neighbours.
 
+### Several controllers
+
+One instance can query several controllers, each with its own backend and credentials. List them under `controllers`, the respondd keys stay at the top level:
+
+```yaml
+unknown_location: report     # default of all controllers
+controllers:
+  - name: omada              # optional, used in the logs
+    backend: omada
+    controller_url: https://omada.lan:8043
+    username: omada
+    password: omada
+    # … further omada keys
+    unknown_location: omit   # per controller
+  - backend: uisp
+    controller_url: https://uisp.lan/nms/api/v2.1
+    token: t-o-k-en
+multicast_enabled: false
+# … further respondd keys
+```
+
+A controller that can't be queried is logged and skipped, the others are reported as usual. Keys shared by several controllers can be reused with a YAML anchor, see [`examples/multi.yaml`](examples/multi.yaml). A config without `controllers` is a single controller with its keys at the top level.
+
 `unifi` and `omada` only report APs broadcasting an SSID that matches `ssid_regex`. `uisp` reports all connected devices except those with `Router` in their name, the neighbours come from the UISP data links.
 
 ## Running
@@ -96,7 +119,7 @@ systemctl enable --now unified-respondd@unifi
 
 The unit runs as an unprivileged `DynamicUser` and gets the config via `LoadCredential`, which needs systemd 247 or newer. The unit file explains the alternative for older systemd.
 
-Several instances can run on one host in unicast mode. In multicast mode only one instance can bind the multicast port.
+To run several controllers on one host, either use one instance with a `controllers` list or one instance per controller. In multicast mode only one instance can bind the multicast port, so there all controllers have to be in one instance.
 
 For OpenWrt there is a procd script in [`examples/unified-respondd.init.d`](examples/unified-respondd.init.d).
 
@@ -108,12 +131,12 @@ For OpenWrt there is a procd script in [`examples/unified-respondd.init.d`](exam
 UNIFIED_RESPONDD_CONFIG_FILE=/etc/unified-respondd/unifi.yaml unified-respondd --dry-run
 ```
 
-It exits with 1 if the controller couldn't be queried.
+It exits with 1 if a controller couldn't be queried, the data of the other controllers is printed anyway.
 
 ## Operations
 
-- **Logging:** Everything is logged to stderr, with systemd to the journal: `journalctl -u unified-respondd@unifi`. Failed controller or nodelist requests are logged as `ERROR`, the query is retried in the next interval. The format and level can be changed with `logging_config`.
-- **Monitoring:** systemd restarts the service if it exits (`Restart=always`). HTTP requests time out after 30 seconds, so a hanging controller doesn't block the service. `unified-respondd --dry-run` can be used as a check, it fails if the controller is unreachable. Whether the nodes are current can be seen on the map or in yanic.
+- **Logging:** Everything is logged to stderr, with systemd to the journal: `journalctl -u unified-respondd@unifi`. Failed controller or nodelist requests are logged as `ERROR`, with several controllers as `Could not fetch the APs of controller <name>`. The query is retried in the next interval. The format and level can be changed with `logging_config`.
+- **Monitoring:** systemd restarts the service if it exits (`Restart=always`). HTTP requests time out after 30 seconds, so a hanging controller doesn't block the service. `unified-respondd --dry-run` can be used as a check, it fails if a controller is unreachable. Whether the nodes are current can be seen on the map or in yanic.
 - **Rollback:** Install the previous version (`pip install 'unified_respondd[…] @ git+https://github.com/freifunkMUC/unified_respondd@<tag>'` or check out the previous tag) and restart the service. When migrating from `omada_respondd` or `uisp_respondd`, keep the old installation and leave `controller_port` in the config until the new service runs fine: the old versions require it and ignore the new `backend` key.
 
 ## Migrating
@@ -234,7 +257,7 @@ pytest
 ruff check . && ruff format --check .
 ```
 
-A new backend is a module in `src/unified_respondd/backends/` with a `ControllerConfig` and a `get_infos(cfg)` returning `model.Accesspoints`, registered in `backends/__init__.py`.
+A new backend is a module in `src/unified_respondd/backends/` implementing the `Backend` protocol from `backends/__init__.py` (a `ControllerConfig` dataclass and `get_infos(cfg)` returning `model.Accesspoints`) and registered in `BACKENDS` there. A test checks every registered backend against the protocol.
 
 ## Ownership
 
