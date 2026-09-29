@@ -14,6 +14,7 @@ import importlib
 DEFAULT_BACKEND = "unifi"
 
 BACKENDS = {
+    "omada": "unified_respondd.backends.omada",
     "unifi": "unified_respondd.backends.unifi",
 }
 

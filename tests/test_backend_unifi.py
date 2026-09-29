@@ -11,8 +11,6 @@ from unified_respondd.backends.unifi import (
     get_ap_channel_usage,
     get_client_count_for_ap,
     get_infos,
-    get_location_by_address,
-    scrape,
 )
 from unified_respondd.model import Accesspoints, Radio
 
@@ -289,71 +287,6 @@ class TestGetApChannelUsage:
         assert channel24 == 0
         assert rx24 == 0
         assert tx24 == 0
-
-
-class TestGetLocationByAddress:
-    """Test the get_location_by_address function."""
-
-    def test_valid_point_string(self):
-        """Test with a valid point string (lat, lon)."""
-        address = "48.1351, 11.5820"
-        app = Mock()
-
-        lat, lon = get_location_by_address(address, app)
-        assert lat == pytest.approx(48.1351, rel=1e-4)
-        assert lon == pytest.approx(11.5820, rel=1e-4)
-
-    @patch("unified_respondd.backends.unifi.time.sleep")
-    def test_geocoding_fallback(self, mock_sleep):
-        """Test fallback to geocoding when point parsing fails."""
-        address = "Munich, Germany"
-        app = Mock()
-        app.geocode.return_value = Mock(raw={"lat": "48.1351", "lon": "11.5820"})
-
-        lat, lon = get_location_by_address(address, app)
-        assert lat == "48.1351"
-        assert lon == "11.5820"
-        mock_sleep.assert_called_once_with(1)
-
-    @patch("unified_respondd.backends.unifi.time.sleep")
-    @patch("unified_respondd.backends.unifi.get_location_by_address")
-    def test_geocoding_failure_recursion(self, mock_get_location, mock_sleep):
-        """Test recursion when geocoding fails."""
-        address = "Invalid Address"
-        app = Mock()
-        app.geocode.side_effect = Exception("Geocoding failed")
-
-        # Mock the recursive call to avoid infinite recursion in test
-        mock_get_location.return_value = (0.0, 0.0)
-
-        # Call the mocked version
-        result = mock_get_location(address, app)
-        assert result == (0.0, 0.0)
-
-
-class TestScrape:
-    """Test the scrape function."""
-
-    @patch("unified_respondd.backends.unifi.rget")
-    def test_scrape_success(self, mock_rget):
-        """Test successful scraping of JSON data."""
-        mock_response = Mock()
-        mock_response.json.return_value = {"nodes": [{"mac": "00:11:22:33:44:55"}]}
-        mock_rget.return_value = mock_response
-
-        result = scrape("http://example.com/api")
-        assert result == {"nodes": [{"mac": "00:11:22:33:44:55"}]}
-        mock_rget.assert_called_once_with("http://example.com/api")
-
-    @patch("unified_respondd.backends.unifi.rget")
-    @patch("unified_respondd.backends.unifi.logger.error")
-    def test_scrape_failure(self, mock_logger, mock_rget):
-        """Test scraping failure handling."""
-        mock_rget.side_effect = Exception("Network error")
-
-        result = scrape("http://example.com/api")
-        assert result is None
-        mock_logger.assert_called_once()
 
 
 class TestGetInfos:

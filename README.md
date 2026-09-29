@@ -7,13 +7,14 @@ Supported controllers (backends):
 | Backend | Controller |
 |---------|------------|
 | `unifi` | UniFi Network controller |
+| `omada` | TP-Link Omada controller |
 
 ## Installation
 
 Install the package together with the dependencies of your backend:
 
 ```sh
-pip install 'unified_respondd[unifi]'
+pip install 'unified_respondd[unifi]'   # or [omada]
 UNIFIED_RESPONDD_CONFIG_FILE=/etc/unified_respondd.yaml unified-respondd
 ```
 
@@ -28,20 +29,46 @@ The config file is looked up in this order:
 1. `UNIFIED_RESPONDD_CONFIG_FILE`, then the legacy `UNIFI_RESPONDD_CONFIG_FILE`
 2. `./unified_respondd.yaml`, then the legacy `./unifi_respondd.yaml`
 
+## Testing against a controller
+
+`--dry-run` queries the controller once, prints the respondd data per node as JSON and exits without sending anything:
+
+```sh
+UNIFIED_RESPONDD_CONFIG_FILE=/etc/unified_respondd.yaml unified-respondd --dry-run
+```
+
+## Migrating from omada_respondd
+
+1. Install `unified_respondd[omada]` (or `pip install -r requirements.txt` in a checkout).
+2. Add `backend: omada` to the config. `controller_port` is no longer needed, the port is part of `controller_url`.
+3. Rename `OMADA_respondd.yaml` to `unified_respondd.yaml` or point `UNIFIED_RESPONDD_CONFIG_FILE` to it. `OMADA_RESPONDD_CONFIG_FILE` is not read anymore.
+4. Check the output with `--dry-run`, then restart the service.
+
+Behaviour changes compared to omada_respondd:
+
+- APs whose Freifunk SSID is disabled (`ssidEnabled: false`) are no longer reported.
+- APs without an SNMP location are reported (with the location from the controller, or 0/0).
+- The uplink neighbour MAC is lowercase, so it matches the node MAC.
+- One login per query for all sites, followed by a logout.
+- A failing site or AP is skipped and logged instead of aborting the whole query.
+
 ## Overview
 
 ```mermaid
 graph TD;
-	A{"*respondd_main*"} -->| | B("*backend (unifi)*")
+	A{"*respondd_main*"} -->| | B("*backend (unifi, omada)*")
     A -->| | C("*respondd_client*")
-	B -->|"RestFul API"| D("unifi_controller")
+	B -->|"RestFul API"| D("controller")
     C -->|"Subscribe"| E("multicast")
     C -->|"Send per interval / On multicast request"| F("unicast")
     G{"yanic"} -->|"Request metrics"| E
     F -->|"Receive"| G
 ```
 
-## Config File:
+## Config File
+
+See [`unifi_respondd.yaml.example`](unifi_respondd.yaml.example) and [`unified_respondd.omada.yaml.example`](unified_respondd.omada.yaml.example). The unifi config:
+
 ```yaml
 backend: unifi
 controller_url: unifi.lan
@@ -78,21 +105,23 @@ logging_config:
 fallback_domain: "unifi_respondd_fallback"  # optional
 ```
 
+The omada backend uses the same keys, except `version` and `controller_port`. `controller_url` includes the port, e.g. `https://omada.lan:8043`.
+
 ## Development
 
 ```sh
-pip install -r requirements-dev.txt -e '.[unifi]'
+pip install -r requirements-dev.txt -e '.[unifi,omada]'
 pytest
 ruff check . && ruff format --check .
 ```
 
-## Linking an Offloader to an Unifi Site by MAC Address
+## Linking an Offloader to a Site by MAC Address
 
-To link an offloader to your site in unifi_respondd, specify the MAC address of the offloader in your YAML configuration file. This enables unifi_respondd to identify the offloader device and mark it correctly on the map.
+To link an offloader to your site, specify the MAC address of the offloader in your YAML configuration file. This enables unified_respondd to identify the offloader device and mark it correctly on the map. The key is the name of the site in the controller.
 
 ### Steps
 
-1. Open your unifi_respondd YAML configuration file (e.g., `unifi_respondd.yaml`).
+1. Open your YAML configuration file (e.g., `unified_respondd.yaml`).
 2. Add or find the section for offloader settings. (Sectionname `offloader_mac`)
 3. Insert the MAC address of your offloader device like this:
    ```yaml
@@ -100,7 +129,7 @@ To link an offloader to your site in unifi_respondd, specify the MAC address of 
 	    SiteName: 00:00:00:00:00:00
    ```
 4. Save the YAML file.
-5. Restart the unifi_respondd service to apply the changes.
+5. Restart the service to apply the changes.
 
 <img width="468" height="607" alt="image" src="https://github.com/user-attachments/assets/dbce4cf9-c2b7-4488-8ef2-90bf86a3421a" />
 
@@ -132,4 +161,26 @@ To set contact information for each UniFi Access Point (AP):
 
 This free-text field helps identify device ownership or provides general contact info which is shown on the Freifunk maps.
 
+## Setting Location for Omada Devices
 
+To set the GPS location of each Omada Access Point (AP):
+
+1. Open the Omada Controller web interface.
+2. Go to the **Devices** section.
+3. Select the Access Point you want to configure.
+4. Click on **Config** for that AP.
+5. Under **Services**, enter the GPS coordinates as latitude and longitude separated by a comma in the **Location** field under **SNMP**, e.g., `48.1351, 11.5820`.
+6. Save your changes.
+
+If the SNMP location is empty, the location configured for the AP in the controller is used.
+
+## Setting Contact Information for Omada Devices
+
+To set contact information for each Omada Access Point (AP):
+
+1. Open the Omada Controller web interface.
+2. Go to the **Devices** section.
+3. Select the Access Point you want to configure.
+4. Click on **Config** for that AP.
+5. Under **Services**, enter contact details (email, phone, etc.) in the **Contact** field under **SNMP**.
+6. Save your changes.

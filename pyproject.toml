@@ -7,10 +7,10 @@ name = "unified_respondd"
 dynamic = ["version"]
 description = "Display APs of WiFi controllers on Freifunk maps via respondd."
 readme = "README.md"
-license = "GPL-3.0-only"
-license-files = ["LICENSE"]
+license = "GPL-3.0-only AND MIT"
+license-files = ["LICENSE", "LICENSES/*"]
 authors = [{ name = "Annika Wickert", email = "aw@awlnx.space" }]
-keywords = ["Freifunk", "respondd", "UniFi"]
+keywords = ["Freifunk", "respondd", "UniFi", "Omada"]
 requires-python = ">=3.10"
 dependencies = [
     "dataclasses-json>=0.6",
@@ -18,6 +18,10 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
+omada = [
+    "geopy>=2.4",
+    "requests>=2",
+]
 unifi = [
     "geopy>=2.4",
     "pyunifi>=2.21",
@@ -39,6 +43,8 @@ testpaths = ["tests"]
 
 [tool.ruff]
 line-length = 88
+# Vendored third party code, kept as close to upstream as possible
+extend-exclude = ["src/unified_respondd/backends/_omada_api.py"]
 
 [tool.ruff.lint]
 # Enable pycodestyle (E, W), pyflakes (F), and isort (I)
