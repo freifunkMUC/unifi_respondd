@@ -324,8 +324,8 @@ class ResponddClient:
                 wirelessinfos.append(
                     WirelessInfo(
                         frequency=frequency24,
-                        rx=ap.rx_bytes5,
-                        tx=ap.tx_bytes5,
+                        rx=ap.rx_bytes24,
+                        tx=ap.tx_bytes24,
                     )
                 )
 
