@@ -255,6 +255,31 @@ class TestGetInfos:
         assert ap.gateway is None
         assert ap.neighbour_macs == [None, "02:00:00:00:00:99"]
 
+    def test_skip_site_on_error(self, cfg, fake_omada):
+        def devices(self, site=None):
+            if site == "Site A":
+                raise Exception("site gone")
+            return [{**DEVICES["Site A"][0], "mac": "02-00-00-00-00-10"}]
+
+        with (
+            patch.object(FakeOmada, "getSiteDevices", devices),
+            patch.object(omada.logger, "error") as error,
+        ):
+            aps = get_infos(cfg).accesspoints
+        assert [ap.name for ap in aps] == ["ap1"]
+        error.assert_called_once()
+
+    def test_skip_ap_on_error(self, cfg, fake_omada):
+        broken = {**DEVICES["Site A"][0], "name": "broken", "mac": "02-00-00-00-00-20"}
+        with (
+            patch.dict(DEVICES, {"Site A": [broken] + DEVICES["Site A"]}),
+            patch.object(omada.logger, "error") as error,
+        ):
+            aps = get_infos(cfg).accesspoints
+        # getSiteAP raises a KeyError for the unknown MAC of the broken AP
+        assert [ap.name for ap in aps] == ["ap1"]
+        error.assert_called_once()
+
     def test_one_session_for_all_sites(self, cfg, fake_omada):
         get_infos(cfg)
         assert len(FakeOmada.instances) == 1

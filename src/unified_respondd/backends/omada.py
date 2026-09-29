@@ -186,7 +186,11 @@ def get_aps(cb, cfg, ffnodes):
     geolookup = Nominatim(user_agent="ffmuc_respondd")
     aps = Accesspoints(accesspoints=[])
     for site in cb.getCurrentUser()["privilege"]["sites"]:
-        aps_for_site = cb.getSiteDevices(site=site["name"])
+        try:
+            aps_for_site = cb.getSiteDevices(site=site["name"])
+        except Exception as ex:
+            logger.error("Error: %s" % (ex))
+            continue
 
         for ap in aps_for_site:
             if (
@@ -194,121 +198,131 @@ def get_aps(cb, cfg, ffnodes):
                 and (ap.get("status", 0) != 0 and ap.get("status", 0) != 20)
                 and ap.get("type") == "ap"
             ):
-                ap_mac = ap["mac"]
-                moreAPInfos = cb.getSiteAP(site=site["name"], mac=ap_mac)
-                ssids = moreAPInfos.get("ssidOverrides", None)
-                containsSSID = False
-                if ssids is not None:
-                    for ssid in ssids:
-                        if re.search(
-                            cfg.ssid_regex, ssid.get("ssid", ""), re.IGNORECASE
-                        ):
-                            if ssid.get("ssidEnabled", False):
-                                containsSSID = True
-
-                if containsSSID is False:
-                    continue  # Skip AP if Freifunk SSID is missing
-
-                (
-                    client_count,
-                    client_count24,
-                    client_count5,
-                ) = get_client_count_for_ap(
-                    clients=cb.getSiteClientsAP(site=site["name"], apmac=ap_mac),
-                    cfg=cfg,
-                )
-
-                # Traffic from entire AP (TODO: Filter Freifunk for ?SSID?)
-                tx = 0
-                rx = 0
-                radioTraffic2g = moreAPInfos.get("radioTraffic2g", None)
-                if radioTraffic2g is not None:
-                    tx = tx + radioTraffic2g.get("tx", 0)
-                    rx = rx + radioTraffic2g.get("rx", 0)
-
-                radioTraffic5g = moreAPInfos.get("radioTraffic5g", None)
-                if radioTraffic5g is not None:
-                    tx = tx + radioTraffic5g.get("tx", 0)
-                    rx = rx + radioTraffic5g.get("rx", 0)
-
-                mem_used, mem_buffer, mem_total = _extract_memory(ap, moreAPInfos)
-
-                frequency24 = None
-                wp2g = moreAPInfos.get("wp2g", None)
-                if wp2g is not None and wp2g.get("actualChannel", None) is not None:
-                    frequency24 = get_ap_frequency(wp2g.get("actualChannel"))
-
-                frequency5 = None
-                wp5g = moreAPInfos.get("wp5g", None)
-                if wp5g is not None and wp5g.get("actualChannel", None) is not None:
-                    frequency5 = get_ap_frequency(wp5g.get("actualChannel"))
-
-                offloader_mac, offloader_id, offloader = get_offloader(
-                    cfg.offloader_mac, ffnodes, site["name"]
-                )
-                neighbour_macs = [offloader_mac]
-
-                uplink = ap.get("uplink", None)
-                if uplink is not None:
-                    neighbour_macs.append(uplink.replace("-", ":").lower())
-
-                # lldp_table = ap.get("lldp_table", None)
-                # if lldp_table is not None:
-                # for lldp_entry in lldp_table:
-                # if not lldp_entry.get("is_wired", True):
-                # neighbour_macs.append(lldp_entry.get("chassis_id"))
-
-                # Location
-                lat, lon = 0, 0
-                location = moreAPInfos.get("location", None)
-                if location is not None:
-                    if (
-                        location.get("longitude", None) is not None
-                        and location.get("latitude", None) is not None
-                    ):
-                        lon = location["longitude"]
-                        lat = location["latitude"]
-
-                snmp = moreAPInfos.get("snmp", None) or {}
-                if snmp.get("location", None):
-                    try:
-                        lat, lon = get_location_by_address(snmp["location"], geolookup)
-                    except Exception:
-                        pass
-
-                aps.accesspoints.append(
-                    Accesspoint(
-                        name=ap.get("name", None),
-                        mac=ap_mac.replace("-", ":").lower(),
-                        client_count=client_count,
-                        client_count24=client_count24,
-                        client_count5=client_count5,
-                        latitude=float(lat),
-                        longitude=float(lon),
-                        model=ap.get("showModel", None),
-                        firmware=ap.get("version", None),
-                        firmware_base="Omada",
-                        uptime=moreAPInfos.get("uptimeLong", None),
-                        contact=snmp.get("contact", None),
-                        load_avg=_extract_loadavg(ap, moreAPInfos),
-                        mem_used=mem_used,
-                        mem_buffer=mem_buffer,
-                        mem_total=mem_total,
-                        tx_bytes=tx,
-                        rx_bytes=rx,
-                        gateway=offloader.get("gateway", None),
-                        gateway6=offloader.get("gateway6", None),
-                        gateway_nexthop=offloader_id,
-                        neighbour_macs=neighbour_macs,
-                        domain_code=offloader.get("domain", cfg.fallback_domain),
-                        radios=[
-                            Radio(frequency=frequency)
-                            for frequency in (frequency24, frequency5)
-                            if frequency
-                        ],
+                try:
+                    accesspoint = get_accesspoint(
+                        cb, site["name"], ap, cfg, ffnodes, geolookup
                     )
-                )
+                except Exception as ex:
+                    logger.error("Error: %s" % (ex))
+                    continue
+                if accesspoint is not None:
+                    aps.accesspoints.append(accesspoint)
     return aps
+
+
+def get_accesspoint(cb, site_name, ap, cfg, ffnodes, geolookup):
+    """This function returns the Accesspoint for an AP of the site.
+    Returns None if the AP doesn't broadcast the Freifunk SSID."""
+    ap_mac = ap["mac"]
+    moreAPInfos = cb.getSiteAP(site=site_name, mac=ap_mac)
+    ssids = moreAPInfos.get("ssidOverrides", None)
+    containsSSID = False
+    if ssids is not None:
+        for ssid in ssids:
+            if re.search(cfg.ssid_regex, ssid.get("ssid", ""), re.IGNORECASE):
+                if ssid.get("ssidEnabled", False):
+                    containsSSID = True
+
+    if containsSSID is False:
+        return None  # Skip AP if Freifunk SSID is missing
+
+    (
+        client_count,
+        client_count24,
+        client_count5,
+    ) = get_client_count_for_ap(
+        clients=cb.getSiteClientsAP(site=site_name, apmac=ap_mac),
+        cfg=cfg,
+    )
+
+    # Traffic from entire AP (TODO: Filter Freifunk for ?SSID?)
+    tx = 0
+    rx = 0
+    radioTraffic2g = moreAPInfos.get("radioTraffic2g", None)
+    if radioTraffic2g is not None:
+        tx = tx + radioTraffic2g.get("tx", 0)
+        rx = rx + radioTraffic2g.get("rx", 0)
+
+    radioTraffic5g = moreAPInfos.get("radioTraffic5g", None)
+    if radioTraffic5g is not None:
+        tx = tx + radioTraffic5g.get("tx", 0)
+        rx = rx + radioTraffic5g.get("rx", 0)
+
+    mem_used, mem_buffer, mem_total = _extract_memory(ap, moreAPInfos)
+
+    frequency24 = None
+    wp2g = moreAPInfos.get("wp2g", None)
+    if wp2g is not None and wp2g.get("actualChannel", None) is not None:
+        frequency24 = get_ap_frequency(wp2g.get("actualChannel"))
+
+    frequency5 = None
+    wp5g = moreAPInfos.get("wp5g", None)
+    if wp5g is not None and wp5g.get("actualChannel", None) is not None:
+        frequency5 = get_ap_frequency(wp5g.get("actualChannel"))
+
+    offloader_mac, offloader_id, offloader = get_offloader(
+        cfg.offloader_mac, ffnodes, site_name
+    )
+    neighbour_macs = [offloader_mac]
+
+    uplink = ap.get("uplink", None)
+    if uplink is not None:
+        neighbour_macs.append(uplink.replace("-", ":").lower())
+
+    # lldp_table = ap.get("lldp_table", None)
+    # if lldp_table is not None:
+    # for lldp_entry in lldp_table:
+    # if not lldp_entry.get("is_wired", True):
+    # neighbour_macs.append(lldp_entry.get("chassis_id"))
+
+    # Location
+    lat, lon = 0, 0
+    location = moreAPInfos.get("location", None)
+    if location is not None:
+        if (
+            location.get("longitude", None) is not None
+            and location.get("latitude", None) is not None
+        ):
+            lon = location["longitude"]
+            lat = location["latitude"]
+
+    snmp = moreAPInfos.get("snmp", None) or {}
+    if snmp.get("location", None):
+        try:
+            lat, lon = get_location_by_address(snmp["location"], geolookup)
+        except Exception:
+            pass
+
+    return Accesspoint(
+        name=ap.get("name", None),
+        mac=ap_mac.replace("-", ":").lower(),
+        client_count=client_count,
+        client_count24=client_count24,
+        client_count5=client_count5,
+        latitude=float(lat),
+        longitude=float(lon),
+        model=ap.get("showModel", None),
+        firmware=ap.get("version", None),
+        firmware_base="Omada",
+        uptime=moreAPInfos.get("uptimeLong", None),
+        contact=snmp.get("contact", None),
+        load_avg=_extract_loadavg(ap, moreAPInfos),
+        mem_used=mem_used,
+        mem_buffer=mem_buffer,
+        mem_total=mem_total,
+        tx_bytes=tx,
+        rx_bytes=rx,
+        gateway=offloader.get("gateway", None),
+        gateway6=offloader.get("gateway6", None),
+        gateway_nexthop=offloader_id,
+        neighbour_macs=neighbour_macs,
+        domain_code=offloader.get("domain", cfg.fallback_domain),
+        radios=[
+            Radio(frequency=frequency)
+            for frequency in (frequency24, frequency5)
+            if frequency
+        ],
+    )
 
 
 def main():
