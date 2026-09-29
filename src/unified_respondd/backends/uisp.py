@@ -444,6 +444,8 @@ def get_infos(cfg):
     aps = Accesspoints(accesspoints=[])
     neighbour_names = {}
     devices = scrape(cfg.controller_url + "/devices", cfg.token)
+    if not isinstance(devices, list):
+        return None  # the error is logged by scrape
     if devices:
         links = scrape(cfg.controller_url + "/data-links", cfg.token)
         for device in devices:

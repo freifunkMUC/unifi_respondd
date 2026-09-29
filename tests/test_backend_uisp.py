@@ -249,5 +249,9 @@ class TestGetInfos:
         assert get_infos(cfg).accesspoints[0].neighbour_macs == []
 
     def test_no_devices(self, cfg, api):
-        api["devices"] = ""
+        api["devices"] = []
         assert get_infos(cfg).accesspoints == []
+
+    def test_controller_error(self, cfg, api):
+        api["devices"] = ""  # scrape returns "" on errors
+        assert get_infos(cfg) is None
