@@ -193,6 +193,7 @@ class TestGetInfos:
         assert ap.mac == "fc:ec:da:00:00:01"
         assert ap.model == "AF60-LR"
         assert ap.firmware == "2.6.0"
+        assert ap.firmware_base == "UISP"
         assert (ap.latitude, ap.longitude) == (48.1, 11.5)
         assert ap.uptime == 1000
         assert ap.load_avg == 0.2

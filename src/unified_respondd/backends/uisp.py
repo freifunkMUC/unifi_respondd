@@ -514,7 +514,7 @@ def get_infos(cfg):
                     longitude=float(get_location(device)[1]),
                     domain_code=cfg.fallback_domain,
                     firmware=get_firmware(device),
-                    firmware_base="UniFi",
+                    firmware_base="UISP",
                     model=get_model(device),
                     uptime=uptime if uptime is not None else 0,
                     load_avg=round(loadavg, 2) if loadavg is not None else 0.0,
