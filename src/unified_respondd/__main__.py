@@ -4,8 +4,9 @@ import argparse
 import json
 import sys
 
-from unified_respondd import config
+from unified_respondd import backends, config
 from unified_respondd.respondd_client import ResponddClient
+from unified_respondd.timeouts import set_default_request_timeout
 
 
 def main(argv=None):
@@ -20,6 +21,7 @@ def main(argv=None):
         "without sending anything",
     )
     args = parser.parse_args(argv)
+    set_default_request_timeout(backends.REQUEST_TIMEOUT)
 
     cfg = config.Config.from_dict(config.load_config())
     extResponddClient = ResponddClient(cfg)

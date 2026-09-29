@@ -45,6 +45,15 @@ def test_dry_run_controller_error(backend, capsys):
     assert "Could not fetch" in capsys.readouterr().err
 
 
+def test_sets_request_timeout(backend):
+    with (
+        patch.object(cli, "set_default_request_timeout") as set_timeout,
+        patch.object(cli.ResponddClient, "start"),
+    ):
+        cli.main([])
+    set_timeout.assert_called_once_with(30)
+
+
 def test_without_dry_run_starts_client(backend):
     with patch.object(cli.ResponddClient, "start") as start:
         cli.main([])
