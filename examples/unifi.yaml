@@ -29,6 +29,6 @@ logging_config:
     root:
       handlers:
       - console
-      level: DEBUG
+      level: INFO
     version: 1
 fallback_domain: "unifi_respondd_fallback"  # optional

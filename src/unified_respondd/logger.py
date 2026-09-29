@@ -34,7 +34,7 @@ _LOGGING_DEFAULT_CONFIG = {
             "format": "%(asctime)s,%(msecs)d %(levelname)-8s [%(filename)s:%(lineno)d] %(message)s"
         },
     },
-    "root": {"level": "DEBUG", "handlers": ["console"]},
+    "root": {"level": "INFO", "handlers": ["console"]},
 }
 
 

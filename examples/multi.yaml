@@ -49,5 +49,5 @@ logging_config:
     root:
       handlers:
       - console
-      level: DEBUG
+      level: INFO
     version: 1
