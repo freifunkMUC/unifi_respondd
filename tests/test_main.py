@@ -2,12 +2,13 @@
 """Unit tests for unified_respondd/__main__.py module."""
 
 import json
-from unittest.mock import patch
+from unittest.mock import Mock, patch
 
 import pytest
 
 from tests.test_respondd_client import make_ap
 from unified_respondd import __main__ as cli
+from unified_respondd.config import Controller
 from unified_respondd.model import Accesspoints
 
 
@@ -19,7 +20,10 @@ def backend():
         patch("unified_respondd.respondd_client.backends.load") as load,
         patch("unified_respondd.respondd_client.socket.socket"),
     ):
-        from_dict.return_value.backend = "unifi"
+        from_dict.return_value.controllers = [
+            Controller("unifi", "unifi", Mock()),
+            Controller("omada", "omada", Mock()),
+        ]
         yield load.return_value
 
 
@@ -45,3 +49,13 @@ def test_without_dry_run_starts_client(backend):
     with patch.object(cli.ResponddClient, "start") as start:
         cli.main([])
     start.assert_called_once()
+
+
+def test_dry_run_partial_failure(backend, capsys):
+    backend.get_infos.side_effect = [Accesspoints(accesspoints=[make_ap()]), None]
+
+    assert cli.main(["--dry-run"]) == 1
+
+    out = capsys.readouterr()
+    assert list(json.loads(out.out)) == ["020000000010"]
+    assert "controllers: omada" in out.err

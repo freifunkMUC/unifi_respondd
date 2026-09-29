@@ -555,7 +555,10 @@ def main():
     """This function is the main function, it's only executed if we aren't imported."""
     from unified_respondd import config
 
-    print(get_infos(config.Config.from_dict(config.load_config()).controller))
+    cfg = config.Config.from_dict(config.load_config())
+    for controller in cfg.controllers:
+        if controller.backend == "uisp":
+            print(get_infos(controller.config))
 
 
 if __name__ == "__main__":

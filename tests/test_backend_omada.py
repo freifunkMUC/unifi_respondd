@@ -328,13 +328,18 @@ class TestConfigIntegration:
                 "verbose": False,
             }
         )
-        assert isinstance(cfg.controller, ControllerConfig)
+        assert isinstance(cfg.controllers[0].config, ControllerConfig)
 
 
 def test_main_prints_infos(capsys):
     with (
         patch("unified_respondd.config.load_config", return_value={}),
-        patch("unified_respondd.config.Config.from_dict", return_value=Mock()),
+        patch(
+            "unified_respondd.config.Config.from_dict",
+            return_value=Mock(
+                controllers=[Mock(backend="unifi"), Mock(backend="omada")]
+            ),
+        ),
         patch.object(omada, "get_infos", return_value="infos"),
     ):
         omada.main()

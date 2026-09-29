@@ -2,7 +2,7 @@
 import dataclasses
 import os
 import sys
-from typing import Any, Dict
+from typing import Any, Dict, List, Optional
 
 import yaml
 
@@ -25,17 +25,60 @@ class ConfigFileNotFoundError(Error):
     """File could not be found on disk."""
 
 
+def _unknown_location(cfg: Dict[str, Any], default: str) -> str:
+    unknown_location = cfg.get("unknown_location", default)
+    if unknown_location not in UNKNOWN_LOCATION_MODES:
+        raise ValueError(
+            f"Invalid unknown_location '{unknown_location}', "
+            f"choose one of: {', '.join(UNKNOWN_LOCATION_MODES)}"
+        )
+    return unknown_location
+
+
+@dataclasses.dataclass
+class Controller:
+    """A controller to query.
+    Attributes:
+        name: The name of the controller used in the logs.
+        backend: The name of the controller backend, e.g. "unifi".
+        config: The backend specific configuration (backend.ControllerConfig).
+        unknown_location: How to handle APs without a location, see UNKNOWN_LOCATION_MODES.
+    """
+
+    name: str
+    backend: str
+    config: Any
+    unknown_location: str = "report"
+
+    @classmethod
+    def from_dict(
+        cls, cfg: Dict[str, Any], unknown_location: str, index: Optional[int] = None
+    ) -> "Controller":
+        """Creates a Controller from its part of the configuration file.
+        Arguments:
+            cfg: The keys of the controller.
+            unknown_location: The default from the top level of the configuration.
+            index: The position in the controllers list, used for the default name.
+        """
+        backend = cfg.get("backend", backends.DEFAULT_BACKEND)
+        default_name = backend if index is None else f"{backend}{index}"
+        return cls(
+            name=cfg.get("name", default_name),
+            backend=backend,
+            config=backends.load(backend).ControllerConfig.from_dict(cfg),
+            unknown_location=_unknown_location(cfg, unknown_location),
+        )
+
+
 @dataclasses.dataclass
 class Config:
     """A representation of the configuration file.
     Attributes:
-        backend: The name of the controller backend, e.g. "unifi".
-        controller: The backend specific configuration (backend.ControllerConfig).
-        unknown_location: How to handle APs without a location, see UNKNOWN_LOCATION_MODES.
+        controllers: The controllers to query. A config without a "controllers" list
+            is a single controller, the backend keys are at the top level then.
     """
 
-    backend: str
-    controller: Any
+    controllers: List[Controller]
 
     multicast_address: str
     multicast_port: int
@@ -44,7 +87,6 @@ class Config:
     interface: str
     verbose: bool = False
     multicast_enabled: bool = True
-    unknown_location: str = "report"
 
     @classmethod
     def from_dict(cls, cfg: Dict[str, str]) -> "Config":
@@ -54,17 +96,19 @@ class Config:
         Returns:
             A Config object.
         """
-        backend = cfg.get("backend", backends.DEFAULT_BACKEND)
-        unknown_location = cfg.get("unknown_location", "report")
-        if unknown_location not in UNKNOWN_LOCATION_MODES:
-            raise ValueError(
-                f"Invalid unknown_location '{unknown_location}', "
-                f"choose one of: {', '.join(UNKNOWN_LOCATION_MODES)}"
-            )
+        unknown_location = _unknown_location(cfg, "report")
+        if "controllers" in cfg:
+            if not isinstance(cfg["controllers"], list) or not cfg["controllers"]:
+                raise ValueError("controllers must be a non-empty list")
+            controllers = [
+                Controller.from_dict(controller, unknown_location, index)
+                for index, controller in enumerate(cfg["controllers"], start=1)
+            ]
+        else:
+            controllers = [Controller.from_dict(cfg, unknown_location)]
 
         return cls(
-            backend=backend,
-            controller=backends.load(backend).ControllerConfig.from_dict(cfg),
+            controllers=controllers,
             multicast_enabled=cfg["multicast_enabled"],
             multicast_address=cfg["multicast_address"],
             multicast_port=cfg["multicast_port"],
@@ -72,7 +116,6 @@ class Config:
             unicast_port=cfg["unicast_port"],
             interface=cfg["interface"],
             verbose=cfg["verbose"],
-            unknown_location=unknown_location,
         )
 
 

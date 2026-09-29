@@ -34,22 +34,25 @@ UNIFI_CONFIG = {
 class TestConfigFromDict:
     def test_defaults_to_unifi(self):
         cfg = config.Config.from_dict(UNIFI_CONFIG)
-        assert cfg.backend == "unifi"
-        assert isinstance(cfg.controller, unifi.ControllerConfig)
-        assert cfg.controller.username == "user"
+        [controller] = cfg.controllers
+        assert controller.name == "unifi"
+        assert controller.backend == "unifi"
+        assert isinstance(controller.config, unifi.ControllerConfig)
+        assert controller.config.username == "user"
         assert cfg.interface == "eth0"
 
     def test_explicit_backend(self):
         cfg = config.Config.from_dict({**UNIFI_CONFIG, "backend": "unifi"})
-        assert cfg.backend == "unifi"
+        assert cfg.controllers[0].backend == "unifi"
 
     def test_unknown_location_default(self):
-        assert config.Config.from_dict(UNIFI_CONFIG).unknown_location == "report"
+        cfg = config.Config.from_dict(UNIFI_CONFIG)
+        assert cfg.controllers[0].unknown_location == "report"
 
     @pytest.mark.parametrize("mode", ["report", "omit", "skip"])
     def test_unknown_location(self, mode):
         cfg = config.Config.from_dict({**UNIFI_CONFIG, "unknown_location": mode})
-        assert cfg.unknown_location == mode
+        assert cfg.controllers[0].unknown_location == mode
 
     def test_invalid_unknown_location(self):
         with pytest.raises(ValueError, match="Invalid unknown_location 'hide'"):
@@ -58,6 +61,112 @@ class TestConfigFromDict:
     def test_unknown_backend(self):
         with pytest.raises(ValueError, match="Unknown backend 'foo'"):
             config.Config.from_dict({**UNIFI_CONFIG, "backend": "foo"})
+
+
+RESPONDD_CONFIG = {
+    k: UNIFI_CONFIG[k]
+    for k in (
+        "multicast_enabled",
+        "multicast_address",
+        "multicast_port",
+        "unicast_address",
+        "unicast_port",
+        "interface",
+        "verbose",
+    )
+}
+UNIFI_CONTROLLER = {k: v for k, v in UNIFI_CONFIG.items() if k not in RESPONDD_CONFIG}
+UISP_CONTROLLER = {
+    "backend": "uisp",
+    "controller_url": "https://uisp.lan",
+    "token": "t",
+}
+
+
+class TestControllers:
+    def test_list(self):
+        cfg = config.Config.from_dict(
+            {**RESPONDD_CONFIG, "controllers": [UNIFI_CONTROLLER, UISP_CONTROLLER]}
+        )
+        assert [c.backend for c in cfg.controllers] == ["unifi", "uisp"]
+        assert [c.name for c in cfg.controllers] == ["unifi1", "uisp2"]
+        assert cfg.controllers[1].config.token == "t"
+
+    def test_name(self):
+        cfg = config.Config.from_dict(
+            {**RESPONDD_CONFIG, "controllers": [{**UISP_CONTROLLER, "name": "links"}]}
+        )
+        assert cfg.controllers[0].name == "links"
+
+    def test_unknown_location_default_and_override(self):
+        cfg = config.Config.from_dict(
+            {
+                **RESPONDD_CONFIG,
+                "unknown_location": "omit",
+                "controllers": [
+                    UNIFI_CONTROLLER,
+                    {**UISP_CONTROLLER, "unknown_location": "skip"},
+                ],
+            }
+        )
+        assert [c.unknown_location for c in cfg.controllers] == ["omit", "skip"]
+
+    def test_invalid_unknown_location_of_controller(self):
+        with pytest.raises(ValueError, match="Invalid unknown_location"):
+            config.Config.from_dict(
+                {
+                    **RESPONDD_CONFIG,
+                    "controllers": [{**UISP_CONTROLLER, "unknown_location": "hide"}],
+                }
+            )
+
+    @pytest.mark.parametrize("controllers", [[], None, {"backend": "uisp"}])
+    def test_invalid_list(self, controllers):
+        with pytest.raises(ValueError, match="non-empty list"):
+            config.Config.from_dict({**RESPONDD_CONFIG, "controllers": controllers})
+
+    def test_missing_key_of_controller(self):
+        with pytest.raises(KeyError, match="token"):
+            config.Config.from_dict(
+                {
+                    **RESPONDD_CONFIG,
+                    "controllers": [{"backend": "uisp", "controller_url": "x"}],
+                }
+            )
+
+    def test_yaml_anchors_share_keys(self):
+        cfg = config.Config.from_dict(
+            yaml.safe_load(
+                """
+defaults: &unifi
+  backend: unifi
+  controller_port: 8443
+  username: user
+  password: secret
+  ssid_regex: .*freifunk.*
+  offloader_mac: {}
+  nodelist: https://map.example.org/meshviewer.json
+  version: v5
+  ssl_verify: true
+controllers:
+  - <<: *unifi
+    controller_url: unifi1.example.org
+  - <<: *unifi
+    controller_url: unifi2.example.org
+multicast_enabled: false
+multicast_address: ff05::2:1001
+multicast_port: 1001
+unicast_address: fe80::1
+unicast_port: 10001
+interface: eth0
+verbose: false
+"""
+            )
+        )
+        assert [c.config.controller_url for c in cfg.controllers] == [
+            "unifi1.example.org",
+            "unifi2.example.org",
+        ]
 
 
 class TestLoadBackend:

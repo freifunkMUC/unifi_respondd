@@ -24,8 +24,8 @@ class Accesspoint:
     Attributes:
         name: The name of the AP.
         mac: The MAC address of the AP.
-        latitude: The latitude of the AP.
-        longitude: The longitude of the AP.
+        latitude: The latitude of the AP, 0 if unknown, None to omit it.
+        longitude: The longitude of the AP, 0 if unknown, None to omit it.
         model: The hardware model of the AP.
         firmware: The firmware release of the AP.
         firmware_base: The firmware base shown on the map, e.g. "UniFi".
@@ -49,8 +49,8 @@ class Accesspoint:
 
     name: str
     mac: str
-    latitude: float
-    longitude: float
+    latitude: Optional[float]
+    longitude: Optional[float]
     model: str
     firmware: str
     firmware_base: str

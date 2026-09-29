@@ -26,10 +26,17 @@ def main(argv=None):
     if args.dry_run:
         nodes = extResponddClient.collect()
         if nodes is None:
-            print("Could not fetch the APs from the controller", file=sys.stderr)
+            print("Could not fetch the APs from any controller", file=sys.stderr)
             return 1
         json.dump(nodes, sys.stdout, indent=2)
         print()
+        if extResponddClient.failed_controllers:
+            print(
+                "Could not fetch the APs from the controllers: "
+                + ", ".join(extResponddClient.failed_controllers),
+                file=sys.stderr,
+            )
+            return 1
         return 0
     extResponddClient.start()
 

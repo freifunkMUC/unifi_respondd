@@ -7,6 +7,7 @@ from unittest.mock import Mock, patch
 
 import pytest
 
+from unified_respondd.config import Controller
 from unified_respondd.model import Accesspoint, Accesspoints, Radio
 from unified_respondd.respondd_client import ResponddClient
 
@@ -45,11 +46,23 @@ def make_ap(**kwargs):
     return Accesspoint(**ap)
 
 
+def make_client(*names):
+    """Returns a client with a mock backend per controller name."""
+    controllers = [Controller(name, "unifi", Mock(), "report") for name in names]
+    config = Mock(verbose=False, controllers=controllers)
+    with (
+        patch("unified_respondd.respondd_client.socket.socket"),
+        patch(
+            "unified_respondd.respondd_client.backends.load",
+            side_effect=lambda name: Mock(),
+        ),
+    ):
+        return ResponddClient(config)
+
+
 @pytest.fixture
 def client():
-    config = Mock(backend="unifi", verbose=False, unknown_location="report")
-    with patch("unified_respondd.respondd_client.socket.socket"):
-        client = ResponddClient(config)
+    client = make_client("unifi")
     client._aps = Accesspoints(accesspoints=[make_ap()])
     return client
 
@@ -170,11 +183,12 @@ class TestUnknownLocation:
         unknown = make_ap(
             name="NoLocation", mac="02:00:00:00:00:11", latitude=0, longitude=0
         )
-        client._backend = Mock()
-        client._backend.get_infos.return_value = Accesspoints(
-            accesspoints=[located, unknown]
-        )
+        controller, backend = client._backends[0]
+        backend.get_infos.return_value = Accesspoints(accesspoints=[located, unknown])
         return client
+
+    def mode(self, client, mode):
+        client._backends[0][0].unknown_location = mode
 
     def test_report(self, aps):
         nodes = aps.collect()
@@ -184,22 +198,79 @@ class TestUnknownLocation:
         }
 
     def test_omit(self, aps):
-        aps._config.unknown_location = "omit"
+        self.mode(aps, "omit")
         nodes = aps.collect()
         assert "location" not in nodes["020000000011"]["nodeinfo"]
         assert "statistics" in nodes["020000000011"]
         assert nodes["020000000010"]["nodeinfo"]["location"]["latitude"] == 48.1351
 
     def test_skip(self, aps):
-        aps._config.unknown_location = "skip"
+        self.mode(aps, "skip")
         assert list(aps.collect()) == ["020000000010"]
 
     def test_only_exactly_zero_is_unknown(self, aps):
-        aps._config.unknown_location = "skip"
-        aps._backend.get_infos.return_value.accesspoints[1].longitude = 11.5
+        self.mode(aps, "skip")
+        aps._backends[0][1].get_infos.return_value.accesspoints[1].longitude = 11.5
         assert len(aps.collect()) == 2
 
     def test_backend_error(self, aps):
-        aps._config.unknown_location = "skip"
-        aps._backend.get_infos.return_value = None
+        self.mode(aps, "skip")
+        aps._backends[0][1].get_infos.return_value = None
         assert aps.collect() is None
+
+
+class TestMultipleControllers:
+    @pytest.fixture
+    def client(self):
+        client = make_client("omada", "unifi")
+        (_, omada), (_, unifi) = client._backends
+        omada.get_infos.return_value = Accesspoints(
+            accesspoints=[make_ap(name="OmadaAP", mac="02:00:00:00:00:20")]
+        )
+        unifi.get_infos.return_value = Accesspoints(
+            accesspoints=[make_ap(name="UnifiAP", mac="02:00:00:00:00:30")]
+        )
+        return client
+
+    def test_all_controllers(self, client):
+        nodes = client.collect()
+        assert sorted(node["nodeinfo"]["hostname"] for node in nodes.values()) == [
+            "OmadaAP",
+            "UnifiAP",
+        ]
+        assert client.failed_controllers == []
+
+    def test_each_controller_gets_its_config(self, client):
+        client.collect()
+        for controller, backend in client._backends:
+            backend.get_infos.assert_called_once_with(controller.config)
+
+    def test_failing_controller_is_skipped(self, client):
+        client._backends[0][1].get_infos.return_value = None
+        with patch("unified_respondd.respondd_client.logger.error") as error:
+            nodes = client.collect()
+        assert [node["nodeinfo"]["hostname"] for node in nodes.values()] == ["UnifiAP"]
+        assert client.failed_controllers == ["omada"]
+        error.assert_called_once()
+
+    def test_all_controllers_failing(self, client):
+        for _, backend in client._backends:
+            backend.get_infos.return_value = None
+        assert client.collect() is None
+        assert client.failed_controllers == ["omada", "unifi"]
+
+    def test_failed_controllers_reset(self, client):
+        client._backends[0][1].get_infos.return_value = None
+        client.collect()
+        client._backends[0][1].get_infos.return_value = Accesspoints(accesspoints=[])
+        client.collect()
+        assert client.failed_controllers == []
+
+    def test_unknown_location_per_controller(self, client):
+        (omada_controller, omada), (_, unifi) = client._backends
+        omada_controller.unknown_location = "skip"
+        for backend in (omada, unifi):
+            backend.get_infos.return_value.accesspoints[0].latitude = 0
+            backend.get_infos.return_value.accesspoints[0].longitude = 0
+        nodes = client.collect()
+        assert [node["nodeinfo"]["hostname"] for node in nodes.values()] == ["UnifiAP"]
