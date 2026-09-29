@@ -216,8 +216,9 @@ def get_infos(cfg):
                         )
                         offloader = list(
                             filter(
-                                lambda x: x["mac"]
-                                == cfg.offloader_mac.get(site["desc"], ""),
+                                lambda x: (
+                                    x["mac"] == cfg.offloader_mac.get(site["desc"], "")
+                                ),
                                 ffnodes["nodes"],
                             )
                         )[0]

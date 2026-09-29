@@ -1,8 +1,47 @@
+[build-system]
+requires = ["setuptools>=77", "setuptools-scm>=8"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "unified_respondd"
+dynamic = ["version"]
+description = "Display APs of WiFi controllers on Freifunk maps via respondd."
+readme = "README.md"
+license = "GPL-3.0-only"
+license-files = ["LICENSE"]
+authors = [{ name = "Annika Wickert", email = "aw@awlnx.space" }]
+keywords = ["Freifunk", "respondd", "UniFi"]
+requires-python = ">=3.10"
+dependencies = [
+    "dataclasses-json>=0.6",
+    "pyyaml>=6",
+]
+
+[project.optional-dependencies]
+unifi = [
+    "geopy>=2.4",
+    "pyunifi>=2.21",
+    "requests>=2",
+]
+
+[project.scripts]
+unified-respondd = "unified_respondd.__main__:main"
+
+[project.urls]
+Source = "https://github.com/freifunkMUC/unified_respondd"
+
+[tool.setuptools_scm]
+# PyPI rejects local versions (+g<hash>), builds between tags become X.Y.Z.devN
+local_scheme = "no-local-version"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
 [tool.ruff]
-line-length = 120
+line-length = 88
 
 [tool.ruff.lint]
 # Enable pycodestyle (E, W), pyflakes (F), and isort (I)
 select = ["E", "F", "W", "I"]
-# Ignore line too long since we set line-length above
+# Long lines the formatter can't split (strings, comments) are fine
 ignore = ["E501"]

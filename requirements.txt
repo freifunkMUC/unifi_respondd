@@ -1,3 +1,4 @@
+# Pinned runtime dependencies of all backends, used by CI and checkout based deployments
 pyunifi==2.21
 geopy==2.5.0
 pyyaml==6.0.3

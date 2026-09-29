@@ -1,4 +1,0 @@
-include README.md
-include docs/*
-include respondd.py
-include *.example
