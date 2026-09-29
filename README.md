@@ -11,14 +11,14 @@ It replaces the former `unifi_respondd`, `omada_respondd` and `uisp_respondd`. S
 | `uisp` | UISP (airFiber, airMAX, … links) |
 
 ```mermaid
-graph TD;
-	A{"*respondd_main*"} -->| | B("*backend (unifi, omada, uisp)*")
-    A -->| | C("*respondd_client*")
-	B -->|"RestFul API"| D("controller")
-    C -->|"Subscribe"| E("multicast")
-    C -->|"Send per interval / On multicast request"| F("unicast")
-    G{"yanic"} -->|"Request metrics"| E
-    F -->|"Receive"| G
+flowchart TD
+    main{"respondd_main"} --> backend("backend: unifi, omada, uisp")
+    main --> client("respondd_client")
+    backend -->|"REST API"| controller("controller")
+    client -->|"subscribe"| multicast("multicast")
+    client -->|"send per interval / on multicast request"| unicast("unicast")
+    yanic{"yanic"} -->|"request metrics"| multicast
+    unicast -->|"receive"| yanic
 ```
 
 ## Installation
