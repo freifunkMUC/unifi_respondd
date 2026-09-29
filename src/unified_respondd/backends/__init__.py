@@ -13,6 +13,9 @@ import importlib
 
 DEFAULT_BACKEND = "unifi"
 
+# Seconds to wait for a HTTP response, a hanging server must not block respondd
+REQUEST_TIMEOUT = 30
+
 BACKENDS = {
     "omada": "unified_respondd.backends.omada",
     "uisp": "unified_respondd.backends.uisp",

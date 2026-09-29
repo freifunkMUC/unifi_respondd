@@ -7,9 +7,7 @@ from geopy.point import Point
 from requests import get as rget
 
 from unified_respondd import logger
-
-# Seconds to wait for a HTTP response, a hanging server must not block respondd
-REQUEST_TIMEOUT = 30
+from unified_respondd.backends import REQUEST_TIMEOUT
 
 
 def get_location_by_address(address, app, attempts=3):

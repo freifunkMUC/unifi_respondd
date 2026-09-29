@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 """Unit tests for unified_respondd/config.py and backend selection."""
 
+import subprocess
+import sys
 from unittest.mock import patch
 
 import pytest
@@ -129,3 +131,17 @@ class TestCredentialsNotInRepr:
             {"controller_url": "https://uisp.example.org", "token": "secret"}
         )
         assert "secret" not in repr(cfg)
+
+
+@pytest.mark.parametrize(
+    "backend,missing",
+    [("uisp", ["geopy", "pyunifi"]), ("omada", ["pyunifi"])],
+)
+def test_backend_imports_only_its_extra(backend, missing):
+    """A backend must work with only the dependencies of its extra installed."""
+    code = (
+        "import sys\n"
+        f"sys.modules.update(dict.fromkeys({missing!r}))\n"
+        f"import unified_respondd.backends.{backend}\n"
+    )
+    subprocess.run([sys.executable, "-c", code], check=True)

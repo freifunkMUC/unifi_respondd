@@ -4,7 +4,7 @@ from typing import Any, Dict, Optional, Tuple
 from requests import get as rget
 
 from unified_respondd import logger
-from unified_respondd.backends.common import REQUEST_TIMEOUT
+from unified_respondd.backends import REQUEST_TIMEOUT
 from unified_respondd.model import Accesspoint, Accesspoints
 
 
