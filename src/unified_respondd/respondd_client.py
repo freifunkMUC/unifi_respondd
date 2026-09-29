@@ -106,7 +106,8 @@ class NodeInfo:
     software: SoftwareInfo
     hostname: str
     node_id: str
-    location: LocationInfo
+    # Omitted for APs without a location if unknown_location is "omit"
+    location: Optional[LocationInfo] = dataclasses.field(metadata=OMIT_IF_NONE)
     hardware: HardwareInfo
     owner: OwnerInfo
     network: NetworkInfo
@@ -236,6 +237,11 @@ class NeighboursInfo:
     batadv: Dict[str, Neighbours]
 
 
+def has_unknown_location(ap):
+    """Backends report 0/0 if the location of an AP isn't set."""
+    return ap.latitude == 0 and ap.longitude == 0
+
+
 class ResponddClient:
     """This class receives a request from the respondd server and returns the response."""
 
@@ -284,7 +290,12 @@ class ResponddClient:
                     ),
                     hostname=ap.name,
                     node_id=ap.mac.replace(":", ""),
-                    location=LocationInfo(latitude=ap.latitude, longitude=ap.longitude),
+                    location=(
+                        None
+                        if self._config.unknown_location == "omit"
+                        and has_unknown_location(ap)
+                        else LocationInfo(latitude=ap.latitude, longitude=ap.longitude)
+                    ),
                     hardware=HardwareInfo(model=ap.model),
                     owner=OwnerInfo(contact=ap.contact),
                     network=NetworkInfo(
@@ -405,7 +416,7 @@ class ResponddClient:
             else:
                 self.sendUnicast()
             self._timeStart = time.time()
-            self._aps = self._backend.get_infos(self._config.controller)
+            self._aps = self.fetch()
             if self._aps is None:
                 continue
             if msgSplit[0] == "GET":  # multi_request
@@ -417,10 +428,24 @@ class ResponddClient:
                 self.sendStruct(sourceAddress, responseStruct, False)
             self._timeStop = time.time()
 
+    def fetch(self):
+        """This method returns the APs of the backend, None on error.
+        APs without a location are dropped if unknown_location is "skip"."""
+        aps = self._backend.get_infos(self._config.controller)
+        if aps is not None and self._config.unknown_location == "skip":
+            known = [ap for ap in aps.accesspoints if not has_unknown_location(ap)]
+            if len(known) < len(aps.accesspoints):
+                logger.debug(
+                    "Skipping %d APs without a location",
+                    len(aps.accesspoints) - len(known),
+                )
+            aps.accesspoints = known
+        return aps
+
     def collect(self):
         """This method fetches the APs once and returns all responses per node_id.
         Returns None if the APs could not be fetched."""
-        self._aps = self._backend.get_infos(self._config.controller)
+        self._aps = self.fetch()
         if self._aps is None:
             return None
         responseStruct = {

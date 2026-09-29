@@ -43,6 +43,18 @@ class TestConfigFromDict:
         cfg = config.Config.from_dict({**UNIFI_CONFIG, "backend": "unifi"})
         assert cfg.backend == "unifi"
 
+    def test_unknown_location_default(self):
+        assert config.Config.from_dict(UNIFI_CONFIG).unknown_location == "report"
+
+    @pytest.mark.parametrize("mode", ["report", "omit", "skip"])
+    def test_unknown_location(self, mode):
+        cfg = config.Config.from_dict({**UNIFI_CONFIG, "unknown_location": mode})
+        assert cfg.unknown_location == mode
+
+    def test_invalid_unknown_location(self):
+        with pytest.raises(ValueError, match="Invalid unknown_location 'hide'"):
+            config.Config.from_dict({**UNIFI_CONFIG, "unknown_location": "hide"})
+
     def test_unknown_backend(self):
         with pytest.raises(ValueError, match="Unknown backend 'foo'"):
             config.Config.from_dict({**UNIFI_CONFIG, "backend": "foo"})

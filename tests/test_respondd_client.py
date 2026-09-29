@@ -47,7 +47,7 @@ def make_ap(**kwargs):
 
 @pytest.fixture
 def client():
-    config = Mock(backend="unifi", verbose=False)
+    config = Mock(backend="unifi", verbose=False, unknown_location="report")
     with patch("unified_respondd.respondd_client.socket.socket"):
         client = ResponddClient(config)
     client._aps = Accesspoints(accesspoints=[make_ap()])
@@ -161,3 +161,45 @@ class TestBuildAndSend:
 
         data, _ = client._sock.sendto.call_args.args
         assert json.loads(data)["statistics"]["node_id"] == "020000000010"
+
+
+class TestUnknownLocation:
+    @pytest.fixture
+    def aps(self, client):
+        located = make_ap()
+        unknown = make_ap(
+            name="NoLocation", mac="02:00:00:00:00:11", latitude=0, longitude=0
+        )
+        client._backend = Mock()
+        client._backend.get_infos.return_value = Accesspoints(
+            accesspoints=[located, unknown]
+        )
+        return client
+
+    def test_report(self, aps):
+        nodes = aps.collect()
+        assert nodes["020000000011"]["nodeinfo"]["location"] == {
+            "latitude": 0,
+            "longitude": 0,
+        }
+
+    def test_omit(self, aps):
+        aps._config.unknown_location = "omit"
+        nodes = aps.collect()
+        assert "location" not in nodes["020000000011"]["nodeinfo"]
+        assert "statistics" in nodes["020000000011"]
+        assert nodes["020000000010"]["nodeinfo"]["location"]["latitude"] == 48.1351
+
+    def test_skip(self, aps):
+        aps._config.unknown_location = "skip"
+        assert list(aps.collect()) == ["020000000010"]
+
+    def test_only_exactly_zero_is_unknown(self, aps):
+        aps._config.unknown_location = "skip"
+        aps._backend.get_infos.return_value.accesspoints[1].longitude = 11.5
+        assert len(aps.collect()) == 2
+
+    def test_backend_error(self, aps):
+        aps._config.unknown_location = "skip"
+        aps._backend.get_infos.return_value = None
+        assert aps.collect() is None

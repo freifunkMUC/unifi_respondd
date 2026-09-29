@@ -12,6 +12,10 @@ from unified_respondd import backends
 CONFIG_OS_ENVS = ("UNIFIED_RESPONDD_CONFIG_FILE", "UNIFI_RESPONDD_CONFIG_FILE")
 CONFIG_DEFAULT_LOCATIONS = ("./unified_respondd.yaml", "./unifi_respondd.yaml")
 
+# How to handle APs without a location (0/0): report them at 0/0, omit the location
+# (listed, but not on the map) or skip them completely
+UNKNOWN_LOCATION_MODES = ("report", "omit", "skip")
+
 
 class Error(Exception):
     """Base Exception handling class."""
@@ -27,6 +31,7 @@ class Config:
     Attributes:
         backend: The name of the controller backend, e.g. "unifi".
         controller: The backend specific configuration (backend.ControllerConfig).
+        unknown_location: How to handle APs without a location, see UNKNOWN_LOCATION_MODES.
     """
 
     backend: str
@@ -39,6 +44,7 @@ class Config:
     interface: str
     verbose: bool = False
     multicast_enabled: bool = True
+    unknown_location: str = "report"
 
     @classmethod
     def from_dict(cls, cfg: Dict[str, str]) -> "Config":
@@ -49,6 +55,12 @@ class Config:
             A Config object.
         """
         backend = cfg.get("backend", backends.DEFAULT_BACKEND)
+        unknown_location = cfg.get("unknown_location", "report")
+        if unknown_location not in UNKNOWN_LOCATION_MODES:
+            raise ValueError(
+                f"Invalid unknown_location '{unknown_location}', "
+                f"choose one of: {', '.join(UNKNOWN_LOCATION_MODES)}"
+            )
 
         return cls(
             backend=backend,
@@ -60,6 +72,7 @@ class Config:
             unicast_port=cfg["unicast_port"],
             interface=cfg["interface"],
             verbose=cfg["verbose"],
+            unknown_location=unknown_location,
         )
 
 
