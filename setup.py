@@ -16,7 +16,7 @@ setup(
     license="GPLv3",
     keywords="Unifi Freifunk",
     url="http://github.com/freifunkMUC/unified_respondd",
-    packages=["unified_respondd"],
+    packages=["unified_respondd", "unified_respondd.backends"],
     long_description=read("README.md"),
     long_description_content_type="text/markdown",
     include_package_data=True,

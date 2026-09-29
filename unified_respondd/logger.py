@@ -8,7 +8,7 @@ from logging import warning as warning
 
 import yaml
 
-from unified_respondd.config import UNIFI_RESPONDD_CONFIG_DEFAULT_LOCATION
+from unified_respondd.config import config_file_path
 
 # Explicitly declare public API
 __all__ = [
@@ -48,8 +48,9 @@ def fetch_logging_configuration():
         Logging configuration.
     """
     logging_cfg = dict()
-    if os.path.isfile(UNIFI_RESPONDD_CONFIG_DEFAULT_LOCATION):
-        with open(UNIFI_RESPONDD_CONFIG_DEFAULT_LOCATION) as cfg_file:
+    config_file = config_file_path()
+    if os.path.isfile(config_file):
+        with open(config_file) as cfg_file:
             logging_cfg = yaml.safe_load(cfg_file)
     if logging_cfg.get("logging_config"):
         return logging_cfg.get("logging_config")
