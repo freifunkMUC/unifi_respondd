@@ -406,6 +406,21 @@ class ResponddClient:
                 self.sendStruct(sourceAddress, responseStruct, False)
             self._timeStop = time.time()
 
+    def collect(self):
+        """This method fetches the APs once and returns all responses per node_id.
+        Returns None if the APs could not be fetched."""
+        self._aps = self._backend.get_infos(self._config.controller)
+        if self._aps is None:
+            return None
+        responseStruct = {
+            request: self.buildStruct(request)
+            for request in ("nodeinfo", "statistics", "neighbours")
+        }
+        return {
+            node_id: {key: info.to_dict() for key, info in infos.items()}
+            for node_id, infos in self.merge_node(responseStruct).items()
+        }
+
     def merge_node(self, responseStruct):
         """This method merges the node information of all APs to their corresponding node_id."""
         merged = {}
