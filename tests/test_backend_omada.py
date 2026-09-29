@@ -239,6 +239,14 @@ class TestGetInfos:
         assert (aps[0].latitude, aps[0].longitude) == (0.0, 0.0)
         assert aps[0].contact is None
 
+    def test_uplink_mac_matches_node_mac(self, cfg, fake_omada):
+        """Omada reports MACs as AA-BB-..., the nodes use aa:bb:..."""
+        uplink = {"name": "ap0", "mac": "02-00-00-00-00-0A", "status": 14}
+        devices = [{**DEVICES["Site A"][0], "uplink": "02-00-00-00-00-0A"}, uplink]
+        with patch.dict(DEVICES, {"Site A": devices}):
+            ap = get_infos(cfg).accesspoints[0]
+        assert ap.neighbour_macs[1] == "02:00:00:00:00:0a"
+
     def test_fallback_domain_without_offloader(self, cfg, fake_omada):
         cfg.offloader_mac = {}
         cfg.fallback_domain = "fallback"

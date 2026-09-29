@@ -250,7 +250,7 @@ def get_aps(cb, cfg, ffnodes):
 
                 uplink = ap.get("uplink", None)
                 if uplink is not None:
-                    neighbour_macs.append(uplink.replace("-", ":"))
+                    neighbour_macs.append(uplink.replace("-", ":").lower())
 
                 # lldp_table = ap.get("lldp_table", None)
                 # if lldp_table is not None:
